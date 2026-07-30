@@ -257,6 +257,7 @@
 	let bestandNaam = $state('');
 	let parsing = $state(false);
 	let toepassen = $state(false);
+	let bestandBezig = $state(false);
 	let parseFout = $state<string | null>(null);
 	let voorstel = $state<Voorstel | null>(null);
 	let gekozen = $state<Set<string>>(new Set());
@@ -299,14 +300,36 @@
 	async function kiesBestand(e: Event & { currentTarget: HTMLInputElement }) {
 		const file = e.currentTarget.files?.[0];
 		if (!file) return;
+		parseFout = null;
+		bestandBezig = true;
+		bestandNaam = `${file.name} — verwerken…`;
 		try {
-			const tekst = await file.text();
+			const naam = file.name.toLowerCase();
+			let tekst = '';
+			if (naam.endsWith('.pdf') || file.type === 'application/pdf') {
+				const { pdfNaarTekst } = await import('$lib/extract-tekst');
+				tekst = await pdfNaarTekst(await file.arrayBuffer());
+				if (tekst.trim().length < 30) {
+					throw new Error(
+						'geen selecteerbare tekst gevonden (mogelijk een gescande PDF). Plak de tekst handmatig.'
+					);
+				}
+			} else if (naam.endsWith('.xlsx') || naam.endsWith('.xls') || file.type.includes('sheet')) {
+				const { excelNaarTekst } = await import('$lib/extract-tekst');
+				tekst = excelNaarTekst(await file.arrayBuffer());
+				if (!tekst.trim()) throw new Error('geen tekst in dit Excel-bestand gevonden.');
+			} else {
+				tekst = await file.text();
+			}
 			docTekst = docTekst.trim() ? docTekst + '\n\n' + tekst : tekst;
 			bestandNaam = file.name;
-		} catch {
-			parseFout = 'Kon dit bestand niet lezen. Plak de tekst desnoods handmatig.';
+		} catch (err) {
+			parseFout = `Kon "${file.name}" niet lezen: ${err instanceof Error ? err.message : 'onbekende fout'}`;
+			bestandNaam = '';
+		} finally {
+			bestandBezig = false;
+			e.currentTarget.value = '';
 		}
-		e.currentTarget.value = '';
 	}
 
 	async function analyseer() {
@@ -1017,9 +1040,10 @@
 				{#if !voorstel}
 					<p class="mb-3 text-sm text-muted-foreground">
 						Plak hieronder de tekst van een klantgesprek, reviews-uitdraai, concurrentie-analyse of ander
-						intake-document (bijv. uit een Google Doc: alles selecteren → kopiëren → plakken), of upload een
-						<code>.txt</code>/<code>.md</code>-bestand. Claude leest het en verdeelt de inhoud over de juiste
-						bronnen (klantgesprek, interne interviews, concurrentie, reviews) — jij bepaalt wat je overneemt.
+						intake-document, of upload een bestand: <strong>PDF</strong>, <strong>Excel</strong>
+						(<code>.xlsx</code>) of tekst (<code>.txt</code>/<code>.md</code>/<code>.csv</code>). Claude leest
+						het en verdeelt de inhoud over de juiste bronnen (klantgesprek, interne interviews, concurrentie,
+						reviews) — jij bepaalt wat je overneemt.
 					</p>
 
 					<Textarea
@@ -1032,17 +1056,21 @@
 						<label
 							class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
 						>
-							<Upload class="size-4" />
-							Tekstbestand kiezen
+							{#if bestandBezig}
+								<LoaderCircle class="size-4 animate-spin" />
+							{:else}
+								<Upload class="size-4" />
+							{/if}
+							Bestand kiezen (PDF, Excel, tekst)
 							<input
 								type="file"
-								accept=".txt,.md,.markdown,.csv,text/plain"
+								accept=".txt,.md,.markdown,.csv,.pdf,.xlsx,.xls,text/plain,application/pdf"
 								onchange={kiesBestand}
 								class="hidden"
 							/>
 						</label>
 						{#if bestandNaam}
-							<span class="truncate text-xs text-muted-foreground">Geladen: {bestandNaam}</span>
+							<span class="truncate text-xs text-muted-foreground">{bestandNaam}</span>
 						{/if}
 						<span class="ml-auto text-xs text-muted-foreground">
 							{docTekst.trim().length.toLocaleString('nl-NL')} tekens

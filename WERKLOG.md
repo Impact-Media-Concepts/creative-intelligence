@@ -71,6 +71,14 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-07-25 — Document-upload accepteert PDF & Excel (branch)
+- **Wat:** de document-upload leest nu ook **PDF** en **Excel** (.xlsx/.xls), niet meer alleen platte tekst. De tekst wordt **client-side** geëxtraheerd (`src/lib/extract-tekst.ts`: pdf.js voor PDF, SheetJS/xlsx voor Excel → CSV per tabblad) en daarna door de bestaande 4-bronnen-parser gestuurd. Alles blijft werken (routering, aanvullen, diepgang).
+- **Techniek:** libraries `pdfjs-dist` (v6) + `xlsx` toegevoegd; alleen **dynamisch geïmporteerd** in de browser-handler (`await import('$lib/extract-tekst')`) → geen SSR-last en lui geladen (geen impact op initiële laadtijd). pdf.js-worker via Vite `?url`. Uploadknop accepteert nu .pdf/.xlsx/.xls + laadindicator.
+- **Aanleiding:** klant leverde input als PDF's + Excel; formaat werd niet ondersteund.
+- **Grens (eerlijk):** een **gescande PDF** zonder tekstlaag geeft weinig terug → nette melding "plak de tekst handmatig" (OCR is bewust buiten scope).
+- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon. Nog end-to-end te testen met echte PDF/Excel (login vereist) → branch `bestand-formaten`.
+- **Migratie:** geen.
+
 ### 2026-07-17 — Klantomgeving: sidebar verbergt andere klanten binnen een klant · `55416e5`
 - **Wat:** binnen `/klanten/[id]` toont de sidebar alleen de huidige klant (naam + status, kopje "Klantomgeving") + een "← Alle klanten"-teruglink; de volledige klantenlijst is dan verborgen. Op het hoofdoverzicht blijft de lijst zichtbaar. Belangrijk voor klantpresentaties (geen andere klantnamen in beeld).
 - **Verificatie:** `svelte-check` 0 fouten; gebruiker akkoord. Live.
