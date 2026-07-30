@@ -447,7 +447,7 @@
 			if (bestand?.mediaType === 'application/pdf' && bestand.buf) {
 				// Grote PDF's in pagina-batches lezen (elk onder de 60s-timeout) en samenvoegen.
 				const { pdfInBatches } = await import('$lib/pdf-split');
-				const batches = await pdfInBatches(bestand.buf, 3);
+				const batches = await pdfInBatches(bestand.buf, 2);
 				const delen: Voorstel[] = [];
 				for (let i = 0; i < batches.length; i++) {
 					if (batches.length > 1) parseStatus = `Pagina's lezen — deel ${i + 1}/${batches.length}…`;
