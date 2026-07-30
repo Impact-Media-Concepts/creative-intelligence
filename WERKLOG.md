@@ -71,6 +71,13 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-07-30 — Trigger Map→Matrix fase 1: sturing, funnel-logica & scorekaart-borging
+- **Wat (fundament voor de afstem-interviewstap):** (1) **Teststrategie-configuratie** op de matrix: optioneel persona's / funnellagen / beschikbare middelen kiezen (chips, leeg = geen beperking) → gaat als harde sturing de generatie in (`MatrixConfig` in matrix-ai: filtert funnel-scope, beperkt persona's, kiest format alleen uit gekozen middelen). (2) **Funnel-plaatsingsrubriek** in de trigger map- én matrix-prompt: social proof/reviews/vergelijkingen horen in MOFU/BOFU, nooit in TOFU (lost de "9,2 uit 4.400+ reviews in TOFU"-fout op). (3) **Scorekaart-borging**: bij "Opzet genereren" wordt de backlog eerst automatisch gescoord als 'ie nog ongescoord is, zodat de prioriteit RICE-gedreven is i.p.v. een losse LLM-gok. (client-side vóór de generatie → geen dubbele AI-call/timeout).
+- **Bestanden:** `trigger-map-generator.ts` (funnel-rubriek), `matrix-ai.ts` (MatrixConfig + rubriek + scope), `api/concepts` (config parsen + doorgeven), `matrix/+page.server.ts` (personas meeladen), `matrix/+page.svelte` (config-paneel + borging).
+- **Aanleiding:** feedback dat de matrix soms fout/onvolledig is (funnel-plaatsing), geen sturing vooraf, en "niet gescoord"-backlog → hol RICE.
+- **Verificatie:** `svelte-check` 0 fouten. Fase 2 (afstem-interview: plan van aanpak → goedkeuren → consistente matrix + testplan) volgt.
+- **Migratie:** geen.
+
 ### 2026-07-28 — PDF-chunking: grote PDF's binnen de 60s-timeout
 - **Wat:** grote PDF's liepen tegen Vercel's 60s-limiet (`FUNCTION_INVOCATION_TIMEOUT`) bij het visueel lezen. Opgelost door de PDF **client-side in pagina-batches** te splitsen (`src/lib/pdf-split.ts` met `pdf-lib`, 3 pagina's per batch), elke batch los via `parse_bestand` te laten lezen (elk onder 60s) en de deel-voorstellen samen te voegen (`mergeVoorstellen`: Bron 1/2 per vraag samenvoegen, Bron 3 per naam, Bron 4 per bron_naam). Voortgang zichtbaar ("deel 2/5…"). Blijft op het gratis Vercel-plan.
 - **Techniek:** `pdf-lib` toegevoegd (client-side, dynamisch geïmporteerd; `ignoreEncryption: true`). Base64 in blokken (call-stack-veilig). `postParse`-helper met nette foutmelding. Afbeeldingen/Excel/tekst ongewijzigd (één call).

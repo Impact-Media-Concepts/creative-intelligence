@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import type { Invalshoek } from '$lib/trigger-map';
+import type { Invalshoek, Persona } from '$lib/trigger-map';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
 	const id = params.id;
@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		supabase.from('concepts').select('*').eq('client_id', id).order('created_at', { ascending: true }),
 		supabase
 			.from('trigger_map_versions')
-			.select('id, invalshoeken')
+			.select('id, invalshoeken, personas')
 			.eq('client_id', id)
 			.eq('is_actief', true)
 			.maybeSingle()
@@ -17,6 +17,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 	return {
 		concepten: concepten.data ?? [],
 		invalshoeken: (tm.data?.invalshoeken as Invalshoek[] | null) ?? [],
+		personas: ((tm.data as { personas?: Persona[] | null } | null)?.personas as Persona[] | null) ?? [],
 		versieId: tm.data?.id ?? null,
 		heeftTriggerMap: !!tm.data
 	};

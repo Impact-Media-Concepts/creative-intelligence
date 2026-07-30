@@ -55,6 +55,16 @@ interface LearningsContext {
 	werktNiet?: string[];
 }
 
+/** Sturing van de strateeg: scope + beschikbare middelen (uit de teststrategie-configuratie). */
+interface MatrixConfig {
+	/** Namen van de persona's waarop de test zich richt (leeg = alle). */
+	personas?: string[];
+	/** Funnelfases die meegenomen worden (leeg = alle). */
+	funnelfases?: string[];
+	/** Beschikbare contentvormen/formats (leeg = geen beperking). */
+	middelen?: string[];
+}
+
 const SCHEMA = {
 	type: 'object',
 	additionalProperties: false,
@@ -111,17 +121,35 @@ Richtlijnen:
 - "hypothese": concreet en toetsbaar (Wij verwachten dat ... omdat ...).
 - "prioriteit" (Hoog/Middel/Laag): als bij de invalshoek een "prioriteit" is meegegeven (uit de scorekaart), NEEM DIE EXACT OVER — dat is de door de strateeg goedgekeurde weging. Alleen als er géén prioriteit is meegegeven, weeg je zelf af op aansluiting bij pijnpunt/wens/kans, persona-bereik en funnelfase. Maak in de onderbouwing kort expliciet waarom deze prioriteit past.
 - "onderbouwing": 1-3 zinnen die transparant maken WAAROM dit concept in de matrix staat. Benoem concreet (a) waarom deze invalshoek kansrijk is — koppel het aan een specifiek pijnpunt, wens, bezwaar of kans uit de trigger map — en (b) waarom je deze prioriteit geeft. Dit is de verantwoording die de strateeg leest om je keuze te kunnen controleren; wees specifiek, niet generiek.
+- FUNNEL-PLAATSING: neem de funnelfase van de invalshoek over. Controleer dat 'ie klopt: TOFU = awareness/pijnpunt/herkenning (geen bewijs/aanbod); MOFU = overweging/USP/vergelijking/SOCIAL PROOF; BOFU = conversie/aanbod/garantie/urgentie. Social proof, reviews en vergelijkingen horen NOOIT in TOFU.
+- SCOPE/STURING: als er onder "Sturing" beschikbare middelen (formats) staan, kies "format" UITSLUITEND daaruit. Als er gekozen funnelfases of persona's staan, beperk je je daartoe (maak alleen concepten voor die fases/persona's).
 - LEARNINGS-LOOP: als er "Learnings uit eerdere testrondes" zijn meegegeven, bouw daar expliciet op voort — neem de winnende eigenschappen (format/structuur/creator) als vertrekpunt, verwerk de "volgende stap"-suggesties, en stel GEEN ontkrachte invalshoeken opnieuw voor. Verwijs in de onderbouwing kort naar de learning waarop je voortbouwt.
 - Taal: Nederlands. Gebruik de taal van de doelgroep waar passend. Baseer je op de trigger map — geen aannames.`;
 
 export async function genereerMatrix(
 	tm: TriggerMapContext,
 	richtlijnen?: string,
-	learnings?: LearningsContext
+	learnings?: LearningsContext,
+	config?: MatrixConfig
 ) {
-	// Gearchiveerde invalshoeken tellen niet meer mee.
-	const actieveInvalshoeken = (tm.invalshoeken ?? []).filter((i) => !i.gearchiveerd);
+	// Gearchiveerde invalshoeken tellen niet meer mee; funnel-scope beperkt de fases.
+	const funnelScope = config?.funnelfases?.length ? new Set(config.funnelfases) : null;
+	const actieveInvalshoeken = (tm.invalshoeken ?? [])
+		.filter((i) => !i.gearchiveerd)
+		.filter((i) => !funnelScope || funnelScope.has(String(i.funnelfase)));
+
+	const sturing: string[] = [];
+	if (config?.personas?.length)
+		sturing.push(`Richt je UITSLUITEND op deze persona's: ${config.personas.join('; ')}.`);
+	if (config?.funnelfases?.length)
+		sturing.push(`Maak alleen concepten voor deze funnelfases: ${config.funnelfases.join(', ')}.`);
+	if (config?.middelen?.length)
+		sturing.push(
+			`Beschikbare middelen (kies "format" UITSLUITEND hieruit): ${config.middelen.join(', ')}.`
+		);
+
 	const context = [
+		sturing.length ? '## Sturing (scope & middelen)\n' + sturing.join('\n') : '',
 		'## Trigger map',
 		actieveInvalshoeken.length
 			? 'Invalshoeken (per funnelfase; status + eventueel de vastgestelde prioriteit uit de scorekaart tussen haakjes):\n' +

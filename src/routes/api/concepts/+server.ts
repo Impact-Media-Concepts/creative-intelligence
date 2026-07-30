@@ -138,6 +138,16 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 
 			const richtlijnen = body.richtlijnen == null ? '' : String(body.richtlijnen);
 
+			// Teststrategie-configuratie (scope + middelen) → stuurt de generatie.
+			const rawCfg = (body.config ?? {}) as Record<string, unknown>;
+			const strArr = (v: unknown) =>
+				Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : undefined;
+			const matrixConfig = {
+				personas: strArr(rawCfg.personas),
+				funnelfases: strArr(rawCfg.funnelfases),
+				middelen: strArr(rawCfg.middelen)
+			};
+
 			const { data: tm } = await supabase
 				.from('trigger_map_versions')
 				.select('pijnpunten, wensen, bezwaren, taal_doelgroep, kansen_vs_concurrenten, personas, invalshoeken')
@@ -214,7 +224,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 						}))
 					},
 					richtlijnen,
-					{ winnaars, werkt, werktNiet }
+					{ winnaars, werkt, werktNiet },
+					matrixConfig
 				);
 
 				await supabase.from('ai_logs').insert({

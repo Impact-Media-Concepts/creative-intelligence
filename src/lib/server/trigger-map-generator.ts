@@ -32,6 +32,11 @@ Richtlijnen:
 - Kansen vs concurrenten: 3-5 concrete gaps die je ziet
 - Persona's: 2-4 duidelijk onderscheidende doelgroep-segmenten uit de data (bijv. verschillende koopmotieven of levensfases). Geen verzonnen segmenten.
 - Invalshoeken: exact 3 per funnelfase (3× TOFU, 3× MOFU, 3× BOFU = 9 in totaal). Binnen elke fase gesorteerd op kans. Elke invalshoek is een concrete, testbare hoek — geen herhaling van dezelfde hoek in meerdere fases.
+- FUNNEL-PLAATSING (belangrijk — plaats elke invalshoek in de JUISTE fase):
+    • TOFU (awareness): brede herkenning, pijnpunt/emotie, nieuwsgierigheid, het probleem of verlangen zelf. Nog GEEN merk-USP's, bewijs of aanbod.
+    • MOFU (overweging): USP's, uitleg, vergelijking met alternatieven/concurrenten, SOCIAL PROOF (reviews/beoordelingen/cijfers), twijfels wegnemen.
+    • BOFU (conversie): aanbod, prijs/financiering, garantie, urgentie, de laatste drempel wegnemen, directe call-to-action.
+  Let op: social proof, reviews, ratings en vergelijkingen horen in MOFU of BOFU — NOOIT in TOFU.
 - Taal: Nederlands
 - Gebruik alleen wat uit de data blijkt — geen aannames`;
 

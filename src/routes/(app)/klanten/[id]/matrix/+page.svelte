@@ -282,6 +282,24 @@
 	let richtlijnen = $state('');
 	let toonRichtlijnen = $state(false);
 
+	// ---- Teststrategie-configuratie (optioneel; leeg = geen beperking) ----
+	let toonStrategie = $state(false);
+	let cfgPersonas = $state<string[]>([]);
+	let cfgFunnels = $state<string[]>([]);
+	let cfgMiddelen = $state<string[]>([]);
+	let personaNamen = $derived(data.personas.map((p) => p.naam).filter(Boolean));
+	function toggleIn(arr: string[], v: string): string[] {
+		return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+	}
+	function chipClass(actief: boolean) {
+		return cn(
+			'rounded-full border px-2.5 py-1 text-xs transition-colors',
+			actief
+				? 'border-brand-green bg-brand-mint/50 font-medium text-brand-green'
+				: 'border-border text-muted-foreground hover:bg-muted'
+		);
+	}
+
 	async function genereerMatrix() {
 		if (concepten.length && !confirm('Een matrix-opzet genereren? De voorgestelde concepten worden toegevoegd aan de bestaande.')) {
 			return;
@@ -289,10 +307,17 @@
 		bezigGenereren = true;
 		genereerFout = null;
 		try {
+			// Scorekaart-borging: eerst scoren als de backlog nog ongescoord is, zodat de
+			// prioriteit RICE-gedreven is (niet een losse LLM-gok).
+			if (versieId && invalshoeken.some((i) => !i.gearchiveerd && !i.score)) {
+				await scoresVoorstellen();
+				if (scoresFout) return; // scoren mislukt → niet doorgaan
+			}
 			const { concepten: nieuw } = await postJSON<{ concepten: Concept[] }>('/api/concepts', {
 				type: 'genereer',
 				clientId: data.client.id,
-				richtlijnen
+				richtlijnen,
+				config: { personas: cfgPersonas, funnelfases: cfgFunnels, middelen: cfgMiddelen }
 			});
 			concepten.push(...nieuw);
 		} catch (e) {
@@ -685,6 +710,68 @@
 			{#if i < TESTVOLGORDE.length - 1}<span class="text-muted-foreground">→</span>{/if}
 		{/each}
 	</div>
+
+	<!-- Teststrategie-configuratie (scope & middelen) -->
+	{#if data.heeftTriggerMap}
+		<div class="rounded-lg border p-4">
+			<button
+				type="button"
+				class="flex w-full items-center justify-between gap-2 text-sm font-medium"
+				onclick={() => (toonStrategie = !toonStrategie)}
+			>
+				<span>
+					Teststrategie (optioneel)
+					<span class="font-normal text-muted-foreground">
+						— persona's, funnellagen & beschikbare middelen
+					</span>
+					{#if cfgPersonas.length || cfgFunnels.length || cfgMiddelen.length}
+						<span class="ml-1 text-brand-green">· actief</span>
+					{/if}
+				</span>
+				<ChevronDown class={cn('size-4 shrink-0 transition-transform', toonStrategie && 'rotate-180')} />
+			</button>
+			{#if toonStrategie}
+				<div class="mt-3 space-y-4 text-sm">
+					<p class="text-xs text-muted-foreground">
+						Laat leeg = geen beperking. Kies je iets, dan houdt de generatie zich daar strikt aan
+						(minder/meer persona's = andere teststrategie).
+					</p>
+					{#if personaNamen.length}
+						<div>
+							<span class="mb-1.5 block font-medium">Persona's</span>
+							<div class="flex flex-wrap gap-1.5">
+								{#each personaNamen as p (p)}
+									<button type="button" class={chipClass(cfgPersonas.includes(p))} onclick={() => (cfgPersonas = toggleIn(cfgPersonas, p))}>
+										{p}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+					<div>
+						<span class="mb-1.5 block font-medium">Funnellagen</span>
+						<div class="flex flex-wrap gap-1.5">
+							{#each FUNNELFASES as f (f)}
+								<button type="button" class={chipClass(cfgFunnels.includes(f))} onclick={() => (cfgFunnels = toggleIn(cfgFunnels, f))}>
+									{f}
+								</button>
+							{/each}
+						</div>
+					</div>
+					<div>
+						<span class="mb-1.5 block font-medium">Beschikbare middelen (formats)</span>
+						<div class="flex flex-wrap gap-1.5">
+							{#each FORMATS as m (m)}
+								<button type="button" class={chipClass(cfgMiddelen.includes(m))} onclick={() => (cfgMiddelen = toggleIn(cfgMiddelen, m))}>
+									{m}
+								</button>
+							{/each}
+						</div>
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Extra sturing voor de generatie -->
 	{#if data.heeftTriggerMap}
