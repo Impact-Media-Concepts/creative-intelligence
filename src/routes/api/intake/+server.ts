@@ -2,7 +2,8 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/supabase/database.types';
 import { BRON1_VRAGEN, BRON2_VRAGEN } from '$lib/intake-vragen';
-import { parseIntakeDocument } from '$lib/server/intake-parser';
+import { parseIntakeDocument, parseIntakeBestand } from '$lib/server/intake-parser';
+import type { IntakeParseResultaat } from '$lib/server/intake-parser';
 import { haalPaginaTekst, scanConcurrentWebsite, scanReviews } from '$lib/server/web-scan';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 
@@ -44,6 +45,43 @@ function schoonPatch(patch: unknown, toegestaan: string[]): Record<string, strin
 		}
 	}
 	return uit;
+}
+
+/** Zet een parse-resultaat om naar een schoon voorstel (alleen gevulde, geldige items). */
+function bouwVoorstel(data: IntakeParseResultaat) {
+	const filter = (
+		lijst: Array<{ vraag_nummer: number; antwoord: string }> | undefined,
+		geldig: Set<number>
+	) =>
+		(lijst ?? [])
+			.filter((a) => geldig.has(a.vraag_nummer) && a.antwoord && a.antwoord.trim().length > 0)
+			.map((a) => ({ vraag_nummer: a.vraag_nummer, antwoord: a.antwoord.trim() }));
+
+	const bron3 = (data.bron3 ?? [])
+		.filter((c) => c?.naam && c.naam.trim().length > 0)
+		.map((c) => ({
+			naam: (c.naam ?? '').trim(),
+			url: (c.url ?? '').trim(),
+			meta_ad_library: (c.meta_ad_library ?? '').trim(),
+			invalshoeken: (c.invalshoeken ?? '').trim(),
+			website_taal: (c.website_taal ?? '').trim(),
+			tiktok_observaties: (c.tiktok_observaties ?? '').trim(),
+			kansen: (c.kansen ?? '').trim()
+		}));
+	const bron4 = (data.bron4 ?? [])
+		.filter((r) => r?.samenvatting && r.samenvatting.trim().length > 0)
+		.map((r) => ({
+			platform: (r.platform ?? '').trim(),
+			bron_naam: (r.bron_naam ?? '').trim(),
+			samenvatting: (r.samenvatting ?? '').trim()
+		}));
+
+	return {
+		bron1: filter(data.bron1, BRON1_NUMMERS),
+		bron2: filter(data.bron2, BRON2_NUMMERS),
+		bron3,
+		bron4
+	};
 }
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, user } }) => {
@@ -275,41 +313,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					duur_ms: res.duurMs
 				});
 
-				// Alleen geldige, gevulde antwoorden op bekende vraagnummers teruggeven.
-				const filter = (
-					lijst: Array<{ vraag_nummer: number; antwoord: string }> | undefined,
-					geldig: Set<number>
-				) =>
-					(lijst ?? [])
-						.filter((a) => geldig.has(a.vraag_nummer) && a.antwoord && a.antwoord.trim().length > 0)
-						.map((a) => ({ vraag_nummer: a.vraag_nummer, antwoord: a.antwoord.trim() }));
-
-				// Concurrenten: alleen met een naam. Reviews: alleen met een samenvatting.
-				const bron3 = (res.data.bron3 ?? [])
-					.filter((c) => c?.naam && c.naam.trim().length > 0)
-					.map((c) => ({
-						naam: (c.naam ?? '').trim(),
-						url: (c.url ?? '').trim(),
-						meta_ad_library: (c.meta_ad_library ?? '').trim(),
-						invalshoeken: (c.invalshoeken ?? '').trim(),
-						website_taal: (c.website_taal ?? '').trim(),
-						tiktok_observaties: (c.tiktok_observaties ?? '').trim(),
-						kansen: (c.kansen ?? '').trim()
-					}));
-				const bron4 = (res.data.bron4 ?? [])
-					.filter((r) => r?.samenvatting && r.samenvatting.trim().length > 0)
-					.map((r) => ({
-						platform: (r.platform ?? '').trim(),
-						bron_naam: (r.bron_naam ?? '').trim(),
-						samenvatting: (r.samenvatting ?? '').trim()
-					}));
-
-				return json({
-					bron1: filter(res.data.bron1, BRON1_NUMMERS),
-					bron2: filter(res.data.bron2, BRON2_NUMMERS),
-					bron3,
-					bron4
-				});
+				return json(bouwVoorstel(res.data));
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : 'onbekende fout';
 				await sb.from('ai_logs').insert({
@@ -320,6 +324,45 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					response: 'FOUT: ' + msg
 				});
 				error(500, 'Document analyseren mislukt: ' + msg);
+			}
+			break;
+		}
+
+		case 'parse_bestand': {
+			const clientId = String(body.clientId ?? '');
+			const base64 = String(body.base64 ?? '');
+			const mediaType = String(body.mediaType ?? '');
+			if (!clientId) error(400, 'Ontbrekende klant');
+			if (!base64) error(400, 'Geen bestand ontvangen.');
+			const toegestaan = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+			if (!toegestaan.includes(mediaType)) error(400, 'Bestandstype niet ondersteund.');
+			// base64 is ~4/3 van de bytegrootte; ~16M tekens ≈ 12 MB bestand.
+			if (base64.length > 16_000_000) error(400, 'Bestand te groot (max ~12 MB).');
+
+			try {
+				const res = await parseIntakeBestand(base64, mediaType);
+				await sb.from('ai_logs').insert({
+					client_id: clientId,
+					gebruiker_id: user.id,
+					module: 'intake_parse',
+					model: res.model,
+					prompt: res.prompt,
+					response: res.response,
+					tokens_input: res.tokensInput,
+					tokens_output: res.tokensOutput,
+					duur_ms: res.duurMs
+				});
+				return json(bouwVoorstel(res.data));
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : 'onbekende fout';
+				await sb.from('ai_logs').insert({
+					client_id: clientId,
+					gebruiker_id: user.id,
+					module: 'intake_parse',
+					model: CLAUDE_MODEL,
+					response: 'FOUT: ' + msg
+				});
+				error(500, 'Bestand analyseren mislukt: ' + msg);
 			}
 			break;
 		}

@@ -1,3 +1,4 @@
+import type Anthropic from '@anthropic-ai/sdk';
 import { claudeJSON } from './claude';
 import { BRON1_VRAGEN, BRON2_VRAGEN, type Vraag } from '$lib/intake-vragen';
 
@@ -126,6 +127,7 @@ ROUTEER ZO:
 - EINDKLANT (interview/gesprek) → genummerde vragen van Bron 1, of Bron 2 bij klantenservice/sales-signalen.
 
 DIEPGANG (belangrijk — voorkom te dunne velden):
+- Als er een DOCUMENT of AFBEELDING is bijgevoegd (PDF/afbeelding): lees ook TABELLEN, GRAFIEKEN en tekst-in-afbeeldingen. Neem concrete cijfers, aantallen en percentages uit grafieken/tabellen letterlijk over (bijv. "Via Google: 48", "Ja 48% / Nee 52%").
 - Wees UITPUTTEND: neem ELK relevant punt uit het document mee. Vat NIET samen tot één regel.
 - Schrijf elk Bron 3-veld en elk kopje in Bron 4 als een LIJST met bullets — elke bullet op een NIEUWE regel beginnend met "- ". Streef naar meerdere bullets per veld waar het document dat toelaat.
 - KWANTIFICEER waar mogelijk: aantallen, percentages, looptijden, data/periodes, namen.
@@ -148,4 +150,33 @@ export async function parseIntakeDocument(documentTekst: string) {
 	// effort 'medium': grondiger/uitputtender extractie (de gebruiker wil rijke velden,
 	// geen dunne samenvatting). Ruime max_tokens zodat de (soms lange) JSON niet afknapt.
 	return claudeJSON<IntakeParseResultaat>(SYSTEM, prompt, SCHEMA, 16000, 'medium');
+}
+
+/**
+ * Laat Claude een bijgevoegd bestand (PDF of afbeelding) VISUEEL lezen — inclusief tabellen,
+ * grafieken en tekst-in-afbeeldingen — en routeren naar de vier intake-bronnen.
+ */
+export async function parseIntakeBestand(base64: string, mediaType: string) {
+	const instructie = `## Vragenlijst Bron 1 (klantgesprek)\n${vragenlijst(BRON1_VRAGEN)}\n\n## Vragenlijst Bron 2 (interne interviews)\n${vragenlijst(BRON2_VRAGEN)}\n\n## Opdracht\nHierboven zit een bijgevoegd bestand (PDF of afbeelding), mogelijk met tabellen, grafieken en afbeeldingen. Lees ALLE inhoud — ook cijfers uit grafieken/tabellen en tekst in afbeeldingen — en routeer volgens de regels.`;
+
+	const bestandBlok = (
+		mediaType === 'application/pdf'
+			? {
+					type: 'document',
+					source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+				}
+			: {
+					type: 'image',
+					source: { type: 'base64', media_type: mediaType, data: base64 }
+				}
+	) as unknown as Anthropic.Messages.ContentBlockParam;
+
+	// effort 'low': vision-verwerking kost al tijd; 'low' houdt het onder de Vercel-timeout.
+	return claudeJSON<IntakeParseResultaat>(
+		SYSTEM,
+		[bestandBlok, { type: 'text', text: instructie }],
+		SCHEMA,
+		16000,
+		'low'
+	);
 }

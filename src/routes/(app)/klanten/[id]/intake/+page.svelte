@@ -259,6 +259,8 @@
 	let toepassen = $state(false);
 	let bestandBezig = $state(false);
 	let parseFout = $state<string | null>(null);
+	// Bijgevoegd PDF/afbeelding-bestand (base64) dat Claude visueel leest (incl. tabellen/grafieken).
+	let bestand = $state<{ data: string; mediaType: string; naam: string } | null>(null);
 	let voorstel = $state<Voorstel | null>(null);
 	let gekozen = $state<Set<string>>(new Set());
 	// Per al-gevuld Bron 1/2-veld: 'aanvullen' (default) of 'overschrijven'.
@@ -293,8 +295,21 @@
 		parseFout = null;
 		docTekst = '';
 		bestandNaam = '';
+		bestand = null;
 		gekozen = new Set();
 		modus = {};
+	}
+
+	function bestandNaarBase64(file: File): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const r = new FileReader();
+			r.onload = () => {
+				const s = String(r.result);
+				resolve(s.slice(s.indexOf(',') + 1));
+			};
+			r.onerror = () => reject(new Error('bestand lezen mislukt'));
+			r.readAsDataURL(file);
+		});
 	}
 
 	async function kiesBestand(e: Event & { currentTarget: HTMLInputElement }) {
@@ -302,27 +317,29 @@
 		if (!file) return;
 		parseFout = null;
 		bestandBezig = true;
-		bestandNaam = `${file.name} — verwerken…`;
 		try {
 			const naam = file.name.toLowerCase();
-			let tekst = '';
-			if (naam.endsWith('.pdf') || file.type === 'application/pdf') {
-				const { pdfNaarTekst } = await import('$lib/extract-tekst');
-				tekst = await pdfNaarTekst(await file.arrayBuffer());
-				if (tekst.trim().length < 30) {
-					throw new Error(
-						'geen selecteerbare tekst gevonden (mogelijk een gescande PDF). Plak de tekst handmatig.'
-					);
-				}
+			const isPdf = naam.endsWith('.pdf') || file.type === 'application/pdf';
+			const isAfbeelding = file.type.startsWith('image/');
+			if (isPdf || isAfbeelding) {
+				// PDF/afbeelding → Claude leest 'm visueel (incl. tabellen/grafieken/gescand).
+				bestand = {
+					data: await bestandNaarBase64(file),
+					mediaType: isPdf ? 'application/pdf' : file.type,
+					naam: file.name
+				};
+				bestandNaam = file.name;
 			} else if (naam.endsWith('.xlsx') || naam.endsWith('.xls') || file.type.includes('sheet')) {
 				const { excelNaarTekst } = await import('$lib/extract-tekst');
-				tekst = excelNaarTekst(await file.arrayBuffer());
+				const tekst = excelNaarTekst(await file.arrayBuffer());
 				if (!tekst.trim()) throw new Error('geen tekst in dit Excel-bestand gevonden.');
+				docTekst = docTekst.trim() ? docTekst + '\n\n' + tekst : tekst;
+				bestandNaam = file.name;
 			} else {
-				tekst = await file.text();
+				const tekst = await file.text();
+				docTekst = docTekst.trim() ? docTekst + '\n\n' + tekst : tekst;
+				bestandNaam = file.name;
 			}
-			docTekst = docTekst.trim() ? docTekst + '\n\n' + tekst : tekst;
-			bestandNaam = file.name;
 		} catch (err) {
 			parseFout = `Kon "${file.name}" niet lezen: ${err instanceof Error ? err.message : 'onbekende fout'}`;
 			bestandNaam = '';
@@ -334,19 +351,30 @@
 
 	async function analyseer() {
 		parseFout = null;
-		const t = docTekst.trim();
-		if (t.length < 20) {
-			parseFout = 'Plak eerst de tekst van het document (of upload een tekstbestand).';
+		if (!bestand && docTekst.trim().length < 20) {
+			parseFout = 'Plak eerst tekst, of kies een bestand (PDF, Excel of afbeelding).';
 			return;
 		}
 		parsing = true;
 		try {
+			const body = bestand
+				? { type: 'parse_bestand', clientId, base64: bestand.data, mediaType: bestand.mediaType }
+				: { type: 'parse', clientId, tekst: docTekst.trim() };
 			const res = await fetch('/api/intake', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ type: 'parse', clientId, tekst: t })
+				body: JSON.stringify(body)
 			});
-			if (!res.ok) throw new Error((await res.text().catch(() => '')) || 'Analyse mislukt');
+			if (!res.ok) {
+				const ruw = await res.text().catch(() => '');
+				let msg = ruw;
+				try {
+					msg = JSON.parse(ruw).message ?? ruw;
+				} catch {
+					// ruwe tekst laten staan
+				}
+				throw new Error(msg || 'Analyse mislukt');
+			}
 			const data = (await res.json()) as Voorstel;
 			voorstel = {
 				bron1: data.bron1 ?? [],
@@ -1052,7 +1080,7 @@
 						placeholder="Plak hier de inhoud van het document…"
 					/>
 
-					<div class="mt-3 flex items-center gap-3">
+					<div class="mt-3 flex flex-wrap items-center gap-3">
 						<label
 							class="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
 						>
@@ -1061,20 +1089,37 @@
 							{:else}
 								<Upload class="size-4" />
 							{/if}
-							Bestand kiezen (PDF, Excel, tekst)
+							Bestand kiezen (PDF, Excel, afbeelding, tekst)
 							<input
 								type="file"
-								accept=".txt,.md,.markdown,.csv,.pdf,.xlsx,.xls,text/plain,application/pdf"
+								accept=".txt,.md,.markdown,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.gif,text/plain,application/pdf,image/*"
 								onchange={kiesBestand}
 								class="hidden"
 							/>
 						</label>
-						{#if bestandNaam}
+						{#if bestand}
+							<span class="inline-flex items-center gap-1.5 rounded-md bg-brand-mint/60 px-2 py-1 text-xs text-brand-green">
+								{bestand.naam} — wordt visueel gelezen
+								<button
+									type="button"
+									class="text-brand-green/70 hover:text-brand-green"
+									title="Verwijderen"
+									onclick={() => {
+										bestand = null;
+										bestandNaam = '';
+									}}
+								>
+									<X class="size-3.5" />
+								</button>
+							</span>
+						{:else if bestandNaam}
 							<span class="truncate text-xs text-muted-foreground">{bestandNaam}</span>
 						{/if}
-						<span class="ml-auto text-xs text-muted-foreground">
-							{docTekst.trim().length.toLocaleString('nl-NL')} tekens
-						</span>
+						{#if !bestand}
+							<span class="ml-auto text-xs text-muted-foreground">
+								{docTekst.trim().length.toLocaleString('nl-NL')} tekens
+							</span>
+						{/if}
 					</div>
 
 					{#if parseFout}
@@ -1155,7 +1200,7 @@
 					<span></span>
 					<div class="flex gap-2">
 						<Button variant="ghost" onclick={sluitUpload} disabled={parsing}>Annuleren</Button>
-						<Button onclick={analyseer} disabled={parsing || docTekst.trim().length < 20}>
+						<Button onclick={analyseer} disabled={parsing || (!bestand && docTekst.trim().length < 20)}>
 							{#if parsing}
 								<LoaderCircle class="size-4 animate-spin" />
 								Analyseren…

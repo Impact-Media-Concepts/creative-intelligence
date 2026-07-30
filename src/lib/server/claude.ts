@@ -32,12 +32,17 @@ export type ClaudeEffort = 'low' | 'medium' | 'high' | 'max';
  */
 export async function claudeJSON<T>(
 	system: string,
-	prompt: string,
+	prompt: string | Anthropic.Messages.ContentBlockParam[],
 	schema: object,
 	maxTokens = 16000,
 	effort: ClaudeEffort = 'high'
 ): Promise<ClaudeJSONResultaat<T>> {
 	const start = Date.now();
+	// Voor de ai_logs: bij content-blokken (document/afbeelding) alleen de tekstdelen loggen.
+	const promptVoorLog =
+		typeof prompt === 'string'
+			? prompt
+			: prompt.map((b) => (b.type === 'text' ? b.text : `[${b.type}]`)).join('\n');
 	let response: Anthropic.Messages.Message;
 	try {
 		response = await anthropic.messages.create({
@@ -76,7 +81,7 @@ export async function claudeJSON<T>(
 	return {
 		data,
 		model: response.model,
-		prompt,
+		prompt: promptVoorLog,
 		response: tekst,
 		tokensInput: response.usage.input_tokens,
 		tokensOutput: response.usage.output_tokens,

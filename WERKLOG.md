@@ -71,12 +71,12 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
-### 2026-07-25 — Document-upload accepteert PDF & Excel (branch)
-- **Wat:** de document-upload leest nu ook **PDF** en **Excel** (.xlsx/.xls), niet meer alleen platte tekst. De tekst wordt **client-side** geëxtraheerd (`src/lib/extract-tekst.ts`: pdf.js voor PDF, SheetJS/xlsx voor Excel → CSV per tabblad) en daarna door de bestaande 4-bronnen-parser gestuurd. Alles blijft werken (routering, aanvullen, diepgang).
-- **Techniek:** libraries `pdfjs-dist` (v6) + `xlsx` toegevoegd; alleen **dynamisch geïmporteerd** in de browser-handler (`await import('$lib/extract-tekst')`) → geen SSR-last en lui geladen (geen impact op initiële laadtijd). pdf.js-worker via Vite `?url`. Uploadknop accepteert nu .pdf/.xlsx/.xls + laadindicator.
-- **Aanleiding:** klant leverde input als PDF's + Excel; formaat werd niet ondersteund.
-- **Grens (eerlijk):** een **gescande PDF** zonder tekstlaag geeft weinig terug → nette melding "plak de tekst handmatig" (OCR is bewust buiten scope).
-- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon. Nog end-to-end te testen met echte PDF/Excel (login vereist) → branch `bestand-formaten`.
+### 2026-07-25 — Document-upload accepteert PDF, Excel & afbeeldingen (branch)
+- **Wat:** de document-upload verwerkt nu ook **PDF's, afbeeldingen en Excel** — niet meer alleen platte tekst. Cruciaal: PDF's/afbeeldingen worden **visueel door Claude gelezen** (document/image-block), dus óók **tabellen, grafieken en tekst-in-afbeeldingen** (en gescande PDF's). Excel gaat via SheetJS → CSV per tabblad. Daarna alles door de bestaande 4-bronnen-parser (routering, aanvullen, diepgang blijven werken).
+- **Techniek:** `claudeJSON` accepteert nu ook content-blokken (`string | ContentBlockParam[]`). Nieuwe `parseIntakeBestand(base64, mediaType)` in intake-parser bouwt een document/image-block (SDK 0.110 native `Base64PDFSource`/`Base64ImageSource`, geen beta-header) — effort 'low' i.v.m. vision-latentie/Vercel-timeout. Nieuwe API-type `parse_bestand` (max ~12 MB, whitelist pdf/png/jpeg/webp/gif; gelogd module intake_parse). Client: PDF/afbeelding → base64 (FileReader) → `parse_bestand`; Excel/tekst → tekst → `parse`. Filter-logica gerefactord naar `bouwVoorstel`. Library `xlsx` toegevoegd (dynamisch geïmporteerd, SSR-safe); pdf.js is NIET nodig gebleken (vision leest PDF direct) en weer verwijderd.
+- **Aanleiding:** klant leverde PDF's met grafieken/tabellen + Excel; pure tekst-extractie miste de visuele inhoud.
+- **Grenzen (eerlijk):** grote PDF's (veel pagina's) kosten meer vision-tokens en kunnen richting de 60s-Vercel-timeout lopen; max ~12 MB per bestand.
+- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon; SDK-typen bevestigd. Nog end-to-end te testen met echte PDF/Excel/afbeelding (login vereist) → branch `bestand-formaten`.
 - **Migratie:** geen.
 
 ### 2026-07-17 — Klantomgeving: sidebar verbergt andere klanten binnen een klant · `55416e5`
