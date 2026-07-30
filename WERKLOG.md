@@ -71,6 +71,14 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-07-28 — PDF-chunking: grote PDF's binnen de 60s-timeout
+- **Wat:** grote PDF's liepen tegen Vercel's 60s-limiet (`FUNCTION_INVOCATION_TIMEOUT`) bij het visueel lezen. Opgelost door de PDF **client-side in pagina-batches** te splitsen (`src/lib/pdf-split.ts` met `pdf-lib`, 3 pagina's per batch), elke batch los via `parse_bestand` te laten lezen (elk onder 60s) en de deel-voorstellen samen te voegen (`mergeVoorstellen`: Bron 1/2 per vraag samenvoegen, Bron 3 per naam, Bron 4 per bron_naam). Voortgang zichtbaar ("deel 2/5…"). Blijft op het gratis Vercel-plan.
+- **Techniek:** `pdf-lib` toegevoegd (client-side, dynamisch geïmporteerd; `ignoreEncryption: true`). Base64 in blokken (call-stack-veilig). `postParse`-helper met nette foutmelding. Afbeeldingen/Excel/tekst ongewijzigd (één call).
+- **Aanleiding:** klantenquête-PDF (grafiek-zwaar) gaf FUNCTION_INVOCATION_TIMEOUT op live.
+- **Keuze gebruiker:** chunking bouwen i.p.v. Vercel Pro (gratis blijven).
+- **Verificatie:** `svelte-check` 0 fouten. End-to-end te testen op live met de grote PDF.
+- **Migratie:** geen.
+
 ### 2026-07-25 — Document-upload accepteert PDF, Excel & afbeeldingen (branch)
 - **Wat:** de document-upload verwerkt nu ook **PDF's, afbeeldingen en Excel** — niet meer alleen platte tekst. Cruciaal: PDF's/afbeeldingen worden **visueel door Claude gelezen** (document/image-block), dus óók **tabellen, grafieken en tekst-in-afbeeldingen** (en gescande PDF's). Excel gaat via SheetJS → CSV per tabblad. Daarna alles door de bestaande 4-bronnen-parser (routering, aanvullen, diepgang blijven werken).
 - **Techniek:** `claudeJSON` accepteert nu ook content-blokken (`string | ContentBlockParam[]`). Nieuwe `parseIntakeBestand(base64, mediaType)` in intake-parser bouwt een document/image-block (SDK 0.110 native `Base64PDFSource`/`Base64ImageSource`, geen beta-header) — effort 'low' i.v.m. vision-latentie/Vercel-timeout. Nieuwe API-type `parse_bestand` (max ~12 MB, whitelist pdf/png/jpeg/webp/gif; gelogd module intake_parse). Client: PDF/afbeelding → base64 (FileReader) → `parse_bestand`; Excel/tekst → tekst → `parse`. Filter-logica gerefactord naar `bouwVoorstel`. Library `xlsx` toegevoegd (dynamisch geïmporteerd, SSR-safe); pdf.js is NIET nodig gebleken (vision leest PDF direct) en weer verwijderd.

@@ -259,8 +259,15 @@
 	let toepassen = $state(false);
 	let bestandBezig = $state(false);
 	let parseFout = $state<string | null>(null);
-	// Bijgevoegd PDF/afbeelding-bestand (base64) dat Claude visueel leest (incl. tabellen/grafieken).
-	let bestand = $state<{ data: string; mediaType: string; naam: string } | null>(null);
+	// Bijgevoegd PDF/afbeelding-bestand dat Claude visueel leest (incl. tabellen/grafieken).
+	// PDF → ruwe bytes (buf) zodat we kunnen splitsen; afbeelding → base64.
+	let bestand = $state<{
+		mediaType: string;
+		naam: string;
+		base64: string | null;
+		buf: ArrayBuffer | null;
+	} | null>(null);
+	let parseStatus = $state('');
 	let voorstel = $state<Voorstel | null>(null);
 	let gekozen = $state<Set<string>>(new Set());
 	// Per al-gevuld Bron 1/2-veld: 'aanvullen' (default) of 'overschrijven'.
@@ -321,12 +328,22 @@
 			const naam = file.name.toLowerCase();
 			const isPdf = naam.endsWith('.pdf') || file.type === 'application/pdf';
 			const isAfbeelding = file.type.startsWith('image/');
-			if (isPdf || isAfbeelding) {
-				// PDF/afbeelding → Claude leest 'm visueel (incl. tabellen/grafieken/gescand).
+			if (isPdf) {
+				// PDF → ruwe bytes bewaren zodat we in pagina-batches kunnen splitsen (60s-limiet).
 				bestand = {
-					data: await bestandNaarBase64(file),
-					mediaType: isPdf ? 'application/pdf' : file.type,
-					naam: file.name
+					mediaType: 'application/pdf',
+					naam: file.name,
+					base64: null,
+					buf: await file.arrayBuffer()
+				};
+				bestandNaam = file.name;
+			} else if (isAfbeelding) {
+				// Afbeelding → Claude leest 'm visueel (één call).
+				bestand = {
+					mediaType: file.type,
+					naam: file.name,
+					base64: await bestandNaarBase64(file),
+					buf: null
 				};
 				bestandNaam = file.name;
 			} else if (naam.endsWith('.xlsx') || naam.endsWith('.xls') || file.type.includes('sheet')) {
@@ -349,6 +366,74 @@
 		}
 	}
 
+	/** Eén parse-call → Voorstel (met nette foutmelding). */
+	async function postParse(body: Record<string, unknown>): Promise<Voorstel> {
+		const res = await fetch('/api/intake', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		if (!res.ok) {
+			const ruw = await res.text().catch(() => '');
+			let msg = ruw;
+			try {
+				msg = JSON.parse(ruw).message ?? ruw;
+			} catch {
+				// ruwe tekst laten staan
+			}
+			throw new Error(msg || 'Analyse mislukt');
+		}
+		const d = (await res.json()) as Voorstel;
+		return { bron1: d.bron1 ?? [], bron2: d.bron2 ?? [], bron3: d.bron3 ?? [], bron4: d.bron4 ?? [] };
+	}
+
+	/** Voegt deel-voorstellen (uit PDF-batches) samen tot één voorstel. */
+	function mergeVoorstellen(delen: Voorstel[]): Voorstel {
+		const k = (s: string) => s.trim().toLowerCase();
+		const b1 = new Map<number, string>();
+		const b2 = new Map<number, string>();
+		const voeg = (m: Map<number, string>, arr: GeparseerdAntwoord[]) => {
+			for (const a of arr) {
+				const e = m.get(a.vraag_nummer);
+				m.set(a.vraag_nummer, e ? `${e}\n${a.antwoord}` : a.antwoord);
+			}
+		};
+		const b3 = new Map<string, ConcurrentVoorstel>();
+		const b4: ReviewVoorstel[] = [];
+		for (const d of delen) {
+			voeg(b1, d.bron1);
+			voeg(b2, d.bron2);
+			for (const c of d.bron3) {
+				const e = b3.get(k(c.naam));
+				if (e) {
+					for (const f of [
+						'url',
+						'meta_ad_library',
+						'invalshoeken',
+						'website_taal',
+						'tiktok_observaties',
+						'kansen'
+					] as const) {
+						if (c[f]?.trim()) e[f] = e[f]?.trim() ? `${e[f]}\n${c[f]}` : c[f];
+					}
+				} else {
+					b3.set(k(c.naam), { ...c });
+				}
+			}
+			for (const r of d.bron4) {
+				const e = r.bron_naam ? b4.find((x) => k(x.bron_naam) === k(r.bron_naam)) : undefined;
+				if (e) e.samenvatting = `${e.samenvatting}\n\n${r.samenvatting}`;
+				else b4.push({ ...r });
+			}
+		}
+		return {
+			bron1: [...b1].map(([vraag_nummer, antwoord]) => ({ vraag_nummer, antwoord })),
+			bron2: [...b2].map(([vraag_nummer, antwoord]) => ({ vraag_nummer, antwoord })),
+			bron3: [...b3.values()],
+			bron4: b4
+		};
+	}
+
 	async function analyseer() {
 		parseFout = null;
 		if (!bestand && docTekst.trim().length < 20) {
@@ -356,32 +441,38 @@
 			return;
 		}
 		parsing = true;
+		parseStatus = '';
 		try {
-			const body = bestand
-				? { type: 'parse_bestand', clientId, base64: bestand.data, mediaType: bestand.mediaType }
-				: { type: 'parse', clientId, tekst: docTekst.trim() };
-			const res = await fetch('/api/intake', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(body)
-			});
-			if (!res.ok) {
-				const ruw = await res.text().catch(() => '');
-				let msg = ruw;
-				try {
-					msg = JSON.parse(ruw).message ?? ruw;
-				} catch {
-					// ruwe tekst laten staan
+			let data: Voorstel;
+			if (bestand?.mediaType === 'application/pdf' && bestand.buf) {
+				// Grote PDF's in pagina-batches lezen (elk onder de 60s-timeout) en samenvoegen.
+				const { pdfInBatches } = await import('$lib/pdf-split');
+				const batches = await pdfInBatches(bestand.buf, 3);
+				const delen: Voorstel[] = [];
+				for (let i = 0; i < batches.length; i++) {
+					if (batches.length > 1) parseStatus = `Pagina's lezen — deel ${i + 1}/${batches.length}…`;
+					delen.push(
+						await postParse({
+							type: 'parse_bestand',
+							clientId,
+							base64: batches[i],
+							mediaType: 'application/pdf'
+						})
+					);
 				}
-				throw new Error(msg || 'Analyse mislukt');
+				data = mergeVoorstellen(delen);
+			} else if (bestand?.base64) {
+				data = await postParse({
+					type: 'parse_bestand',
+					clientId,
+					base64: bestand.base64,
+					mediaType: bestand.mediaType
+				});
+			} else {
+				data = await postParse({ type: 'parse', clientId, tekst: docTekst.trim() });
 			}
-			const data = (await res.json()) as Voorstel;
-			voorstel = {
-				bron1: data.bron1 ?? [],
-				bron2: data.bron2 ?? [],
-				bron3: data.bron3 ?? [],
-				bron4: data.bron4 ?? []
-			};
+
+			voorstel = data;
 			// Standaard: alles aangevinkt. Al-gevulde Bron 1/2-velden krijgen modus 'aanvullen'
 			// (Bron 3/4 vullen sowieso aan / maken nieuwe rijen).
 			const sel = new Set<string>();
@@ -404,6 +495,7 @@
 			parseFout = e instanceof Error ? e.message : 'Analyse mislukt';
 		} finally {
 			parsing = false;
+			parseStatus = '';
 		}
 	}
 
@@ -1197,7 +1289,7 @@
 						</Button>
 					</div>
 				{:else}
-					<span></span>
+					<span class="truncate text-xs text-muted-foreground">{parsing ? parseStatus : ''}</span>
 					<div class="flex gap-2">
 						<Button variant="ghost" onclick={sluitUpload} disabled={parsing}>Annuleren</Button>
 						<Button onclick={analyseer} disabled={parsing || (!bestand && docTekst.trim().length < 20)}>
