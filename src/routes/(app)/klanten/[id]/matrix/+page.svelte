@@ -26,7 +26,7 @@
 		TESTVOLGORDE,
 		sorteerConcepten
 	} from '$lib/matrix';
-	import type { Testplan } from '$lib/testplan';
+	import type { Testplan, StrategiePlan } from '$lib/testplan';
 	import { SPRINT_VELDEN } from '$lib/testplan';
 	import { Input } from '$lib/components/ui/input';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -300,7 +300,7 @@
 		);
 	}
 
-	async function genereerMatrix() {
+	async function genereerMatrix(extraRichtlijnen = '') {
 		if (concepten.length && !confirm('Een matrix-opzet genereren? De voorgestelde concepten worden toegevoegd aan de bestaande.')) {
 			return;
 		}
@@ -313,10 +313,11 @@
 				await scoresVoorstellen();
 				if (scoresFout) return; // scoren mislukt → niet doorgaan
 			}
+			const alleRichtlijnen = [richtlijnen, extraRichtlijnen].filter((s) => s.trim()).join('\n\n');
 			const { concepten: nieuw } = await postJSON<{ concepten: Concept[] }>('/api/concepts', {
 				type: 'genereer',
 				clientId: data.client.id,
-				richtlijnen,
+				richtlijnen: alleRichtlijnen,
 				config: { personas: cfgPersonas, funnelfases: cfgFunnels, middelen: cfgMiddelen }
 			});
 			concepten.push(...nieuw);
@@ -324,6 +325,58 @@
 			genereerFout = e instanceof Error ? e.message : 'Genereren mislukt';
 		} finally {
 			bezigGenereren = false;
+		}
+	}
+
+	// ---- Afstem-interview: plan van aanpak → feedback → goedkeuren → matrix ----
+	let plan = $state<StrategiePlan | null>(null);
+	let bezigPlan = $state(false);
+	let planFout = $state<string | null>(null);
+	let planFeedback = $state('');
+	let bezigGoedkeuren = $state(false);
+
+	async function stelPlanOp(feedback = '') {
+		bezigPlan = true;
+		planFout = null;
+		try {
+			const { plan: p } = await postJSON<{ plan: StrategiePlan }>('/api/strategie', {
+				type: 'plan',
+				clientId: data.client.id,
+				config: { personas: cfgPersonas, funnelfases: cfgFunnels, middelen: cfgMiddelen },
+				feedback
+			});
+			plan = p;
+		} catch (e) {
+			planFout = e instanceof Error ? e.message : 'Plan van aanpak opstellen mislukt';
+		} finally {
+			bezigPlan = false;
+		}
+	}
+	async function verfijnPlan() {
+		if (!planFeedback.trim()) return;
+		await stelPlanOp(planFeedback);
+		if (!planFout) planFeedback = '';
+	}
+	async function keurGoedEnGenereer() {
+		if (!plan) return;
+		bezigGoedkeuren = true;
+		planFout = null;
+		try {
+			await postJSON('/api/strategie', { type: 'goedkeuren', clientId: data.client.id, plan });
+			// Het goedgekeurde plan als strikte sturing meegeven → matrix consistent met het plan.
+			const planContext =
+				'## Afgestemd plan van aanpak (VOLG DIT strikt)\n' +
+				`${plan.samenvatting}\nDoelgroep: ${plan.doelgroep}\nFunnelaanpak: ${plan.funnelaanpak}\n` +
+				'Teststructuur:\n' +
+				plan.sprints
+					.map((s) => `- ${s.titel}: invalshoeken ${(s.concepten ?? []).join(', ')} — ${s.wat_testen}`)
+					.join('\n');
+			await genereerMatrix(planContext);
+			if (!genereerFout) plan = null; // plan verwerkt in de matrix
+		} catch (e) {
+			planFout = e instanceof Error ? e.message : 'Goedkeuren mislukt';
+		} finally {
+			bezigGoedkeuren = false;
 		}
 	}
 
@@ -442,7 +495,7 @@
 				{/if}
 			</div>
 			{#if data.heeftTriggerMap && actief.length > 0}
-				<Button variant="outline" onclick={genereerMatrix} disabled={bezigGenereren}>
+				<Button variant="outline" onclick={() => genereerMatrix()} disabled={bezigGenereren}>
 					{#if bezigGenereren}
 						<LoaderCircle class="size-4 animate-spin" />
 						Genereren…
@@ -464,6 +517,161 @@
 			<TriangleAlert class="size-4 shrink-0" />
 			{genereerFout}
 		</div>
+	{/if}
+
+	<!-- Plan van aanpak (afstem-interview vóór de matrix) -->
+	{#if data.heeftTriggerMap}
+		<section class="space-y-4 rounded-lg border border-brand-lime/40 bg-brand-mint/20 p-4">
+			<div>
+				<h3 class="text-base font-semibold">Plan van aanpak</h3>
+				<p class="text-sm text-muted-foreground">
+					Stem eerst de teststrategie af met de AI Content Strategy Expert — geef feedback, keur goed, en
+					genereer de matrix pas daarna. Zo klopt de matrix meteen en hoef je 'm niet meer te tweaken.
+				</p>
+			</div>
+
+			<!-- Teststrategie (scope & middelen) -->
+			<div class="rounded-md border bg-background p-3">
+				<button
+					type="button"
+					class="flex w-full items-center justify-between gap-2 text-sm font-medium"
+					onclick={() => (toonStrategie = !toonStrategie)}
+				>
+					<span>
+						Teststrategie (optioneel)
+						<span class="font-normal text-muted-foreground">— persona's, funnellagen & middelen</span>
+						{#if cfgPersonas.length || cfgFunnels.length || cfgMiddelen.length}
+							<span class="ml-1 text-brand-green">· actief</span>
+						{/if}
+					</span>
+					<ChevronDown class={cn('size-4 shrink-0 transition-transform', toonStrategie && 'rotate-180')} />
+				</button>
+				{#if toonStrategie}
+					<div class="mt-3 space-y-4 text-sm">
+						<p class="text-xs text-muted-foreground">
+							Laat leeg = geen beperking. Kies je iets, dan houdt de strategie zich daar strikt aan.
+						</p>
+						{#if personaNamen.length}
+							<div>
+								<span class="mb-1.5 block font-medium">Persona's</span>
+								<div class="flex flex-wrap gap-1.5">
+									{#each personaNamen as p (p)}
+										<button type="button" class={chipClass(cfgPersonas.includes(p))} onclick={() => (cfgPersonas = toggleIn(cfgPersonas, p))}>
+											{p}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+						<div>
+							<span class="mb-1.5 block font-medium">Funnellagen</span>
+							<div class="flex flex-wrap gap-1.5">
+								{#each FUNNELFASES as f (f)}
+									<button type="button" class={chipClass(cfgFunnels.includes(f))} onclick={() => (cfgFunnels = toggleIn(cfgFunnels, f))}>
+										{f}
+									</button>
+								{/each}
+							</div>
+						</div>
+						<div>
+							<span class="mb-1.5 block font-medium">Beschikbare middelen (formats)</span>
+							<div class="flex flex-wrap gap-1.5">
+								{#each FORMATS as m (m)}
+									<button type="button" class={chipClass(cfgMiddelen.includes(m))} onclick={() => (cfgMiddelen = toggleIn(cfgMiddelen, m))}>
+										{m}
+									</button>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			{#if planFout}
+				<div class="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+					<TriangleAlert class="size-4 shrink-0" />
+					{planFout}
+				</div>
+			{/if}
+
+			{#if bezigPlan && !plan}
+				<div class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-background py-10 text-center">
+					<LoaderCircle class="size-6 animate-spin text-primary" />
+					<p class="text-sm font-medium">De AI Content Strategy Expert stelt een plan op…</p>
+				</div>
+			{:else if !plan}
+				<Button onclick={() => stelPlanOp()} disabled={bezigPlan}>
+					<Sparkles class="size-4" />
+					Plan van aanpak opstellen
+				</Button>
+			{:else}
+				<!-- Plan-weergave -->
+				<div class="space-y-3 rounded-md border bg-background p-3 text-sm">
+					<p>{plan.samenvatting}</p>
+					<p><span class="font-medium">Doelgroep:</span> {plan.doelgroep}</p>
+					<p><span class="font-medium">Funnelaanpak:</span> {plan.funnelaanpak}</p>
+					<div class="space-y-2">
+						{#each plan.sprints as s, i (i)}
+							<div class="rounded-md border p-2.5">
+								<div class="flex items-center gap-2">
+									<span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-green text-[11px] font-semibold text-white">
+										{i + 1}
+									</span>
+									<span class="font-medium">{s.titel}</span>
+								</div>
+								{#if s.focus}<p class="mt-0.5 text-xs text-muted-foreground">{s.focus}</p>{/if}
+								{#if s.concepten?.length}
+									<div class="mt-1.5 flex flex-wrap gap-1">
+										{#each s.concepten as c (c)}
+											<span class="rounded bg-muted px-1.5 py-0.5 text-xs">{c}</span>
+										{/each}
+									</div>
+								{/if}
+								{#if s.wat_testen}<p class="mt-1.5"><span class="text-muted-foreground">Wat testen:</span> {s.wat_testen}</p>{/if}
+								<p class="mt-0.5 text-xs text-muted-foreground">
+									{[s.succescriterium && `Succes: ${s.succescriterium}`, s.budget && `Budget: ${s.budget}`, s.duur && `Duur: ${s.duur}`].filter(Boolean).join(' · ')}
+								</p>
+							</div>
+						{/each}
+					</div>
+					{#if plan.aannames?.length}
+						<div>
+							<p class="font-medium">Aannames</p>
+							<ul class="mt-1 space-y-0.5">
+								{#each plan.aannames as a (a)}
+									<li class="flex gap-2"><span class="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground"></span><span>{a}</span></li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Feedback + acties -->
+				<div class="space-y-2">
+					<Textarea
+						bind:value={planFeedback}
+						rows={2}
+						placeholder={'Feedback op het plan… (bijv. "begin met BOFU", "voeg persona X toe", "alleen video")'}
+					/>
+					<div class="flex flex-wrap gap-2">
+						<Button variant="outline" onclick={verfijnPlan} disabled={bezigPlan || bezigGoedkeuren || !planFeedback.trim()}>
+							{#if bezigPlan}
+								<LoaderCircle class="size-4 animate-spin" /> Verfijnen…
+							{:else}
+								<Sparkles class="size-4" /> Verfijn met feedback
+							{/if}
+						</Button>
+						<Button onclick={keurGoedEnGenereer} disabled={bezigPlan || bezigGoedkeuren}>
+							{#if bezigGoedkeuren}
+								<LoaderCircle class="size-4 animate-spin" /> Matrix genereren…
+							{:else}
+								<Check class="size-4" /> Goedkeuren & matrix genereren
+							{/if}
+						</Button>
+					</div>
+				</div>
+			{/if}
+		</section>
 	{/if}
 
 	<!-- Test-backlog: geprioriteerde invalshoeken uit de trigger map (inklapbaar) -->
@@ -711,68 +919,6 @@
 		{/each}
 	</div>
 
-	<!-- Teststrategie-configuratie (scope & middelen) -->
-	{#if data.heeftTriggerMap}
-		<div class="rounded-lg border p-4">
-			<button
-				type="button"
-				class="flex w-full items-center justify-between gap-2 text-sm font-medium"
-				onclick={() => (toonStrategie = !toonStrategie)}
-			>
-				<span>
-					Teststrategie (optioneel)
-					<span class="font-normal text-muted-foreground">
-						— persona's, funnellagen & beschikbare middelen
-					</span>
-					{#if cfgPersonas.length || cfgFunnels.length || cfgMiddelen.length}
-						<span class="ml-1 text-brand-green">· actief</span>
-					{/if}
-				</span>
-				<ChevronDown class={cn('size-4 shrink-0 transition-transform', toonStrategie && 'rotate-180')} />
-			</button>
-			{#if toonStrategie}
-				<div class="mt-3 space-y-4 text-sm">
-					<p class="text-xs text-muted-foreground">
-						Laat leeg = geen beperking. Kies je iets, dan houdt de generatie zich daar strikt aan
-						(minder/meer persona's = andere teststrategie).
-					</p>
-					{#if personaNamen.length}
-						<div>
-							<span class="mb-1.5 block font-medium">Persona's</span>
-							<div class="flex flex-wrap gap-1.5">
-								{#each personaNamen as p (p)}
-									<button type="button" class={chipClass(cfgPersonas.includes(p))} onclick={() => (cfgPersonas = toggleIn(cfgPersonas, p))}>
-										{p}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
-					<div>
-						<span class="mb-1.5 block font-medium">Funnellagen</span>
-						<div class="flex flex-wrap gap-1.5">
-							{#each FUNNELFASES as f (f)}
-								<button type="button" class={chipClass(cfgFunnels.includes(f))} onclick={() => (cfgFunnels = toggleIn(cfgFunnels, f))}>
-									{f}
-								</button>
-							{/each}
-						</div>
-					</div>
-					<div>
-						<span class="mb-1.5 block font-medium">Beschikbare middelen (formats)</span>
-						<div class="flex flex-wrap gap-1.5">
-							{#each FORMATS as m (m)}
-								<button type="button" class={chipClass(cfgMiddelen.includes(m))} onclick={() => (cfgMiddelen = toggleIn(cfgMiddelen, m))}>
-									{m}
-								</button>
-							{/each}
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
-	{/if}
-
 	<!-- Extra sturing voor de generatie -->
 	{#if data.heeftTriggerMap}
 		<div>
@@ -815,7 +961,7 @@
 				basis van je trigger map. Je kunt alles daarna vrij aanpassen.
 			</p>
 			<div class="mt-4 flex flex-wrap justify-center gap-2">
-				<Button onclick={genereerMatrix} disabled={bezigGenereren}>
+				<Button onclick={() => genereerMatrix()} disabled={bezigGenereren}>
 					<Sparkles class="size-4" />
 					Matrix-opzet genereren
 				</Button>
