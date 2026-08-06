@@ -3,7 +3,9 @@
 	import { cn } from '$lib/utils';
 	import { APP_NAAM, ORGANISATIE } from '$lib/config';
 	import { taken } from '$lib/taken.svelte';
+	import Rondleiding from '$lib/components/app/Rondleiding.svelte';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import HelpCircle from '@lucide/svelte/icons/circle-help';
 	import type { ClientStatus } from '$lib/supabase/database.types';
 	import Users from '@lucide/svelte/icons/users';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -22,6 +24,28 @@
 		klantId ? (data.clients.find((c) => c.id === klantId) ?? null) : null
 	);
 	let inKlant = $derived(!!huidigeKlant && pad.startsWith(`/klanten/${klantId}`));
+
+	// ---- Rondleiding: auto-start voor nieuwe gebruikers (1×), altijd te heropenen ----
+	let rondleidingOpen = $state(false);
+	let rondleidingAutoGecheckt = false;
+	$effect(() => {
+		if (!rondleidingAutoGecheckt && data.profiel) {
+			rondleidingAutoGecheckt = true;
+			// Strikt === false: vóór migratie 0010 is de waarde undefined → geen auto-start.
+			if (data.profiel.rondleiding_gezien === false) rondleidingOpen = true;
+		}
+	});
+	async function markeerRondleidingGezien() {
+		try {
+			await fetch('/api/profiel', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ type: 'rondleiding_gezien', waarde: true })
+			});
+		} catch {
+			// niet-kritisch
+		}
+	}
 	let initialen = $derived(
 		(data.profiel?.naam || data.user?.email || '?').replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase()
 	);
@@ -146,6 +170,14 @@
 					<p class="text-xs capitalize text-sidebar-foreground/60">{data.profiel?.rol ?? ''}</p>
 				</div>
 			</div>
+			<button
+				type="button"
+				onclick={() => (rondleidingOpen = true)}
+				class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+			>
+				<HelpCircle class="size-4 shrink-0" />
+				Rondleiding
+			</button>
 			<form method="POST" action="/logout">
 				<button
 					class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -161,6 +193,8 @@
 		{@render children()}
 	</main>
 </div>
+
+<Rondleiding bind:open={rondleidingOpen} onSluiten={markeerRondleidingGezien} />
 
 <!-- App-brede indicator voor lopende achtergrondtaken (blijft staan bij navigeren) -->
 {#if taken.lijst.length > 0}

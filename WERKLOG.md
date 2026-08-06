@@ -71,6 +71,13 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-08-01 — Rondleiding + extra formats
+- **Rondleiding:** nieuwe stap-voor-stap rondleiding (`Rondleiding.svelte`, eigen lichte overlay, 8 stappen: welkom → overzicht/loop → intake → trigger map → plan/matrix → brief → sprint/learnings → tips). Knop "Rondleiding" in de zijbalk (altijd te openen). **Auto-start voor nieuwe gebruikers** (1×) via profielvlag `profiles.rondleiding_gezien` (strikt `=== false`, dus vóór migratie geen auto-start). Sluiten zet de vlag via `POST /api/profiel` (service-role).
+- **MIGRATIE 0010_rondleiding.sql (MOET GEDRAAID WORDEN):** `profiles.rondleiding_gezien boolean not null default false`. Tot die tijd werkt de knop wel, maar wordt de vlag niet onthouden.
+- **Formats uitgebreid:** `FORMATS` in matrix.ts kreeg **Video, AI video, AI static** (naast Video UGC, Static, Motion graphic, Carousel, Anders). Werkt door in de matrix-combobox, de "beschikbare middelen"-config en de format-bewuste brief.
+- **Bestanden:** `Rondleiding.svelte` (nieuw), `(app)/+layout.svelte` (knop + auto-start + mount), `api/profiel/+server.ts` (nieuw), `database.types.ts` (profiles), `matrix.ts` (FORMATS), migratie 0010.
+- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon.
+
 ### 2026-08-01 — Achtergrondtaken: generaties lopen door bij navigeren + app-brede indicator
 - **Wat:** AI-generaties werden nooit echt afgebroken (gewone fetch zonder abort), maar de spinner leefde alleen in dat ene tabje. Nu: een **gedeelde taak-store** (`src/lib/taken.svelte.ts`) + **app-brede indicator** (rechtsonder, blijft staan bij navigeren) en **auto-verversen** na afloop, zodat het resultaat verschijnt ook als je intussen weg bent geklikt.
 - **Techniek:** `postJSON(url, body, { taak, ververs })` registreert een achtergrondtaak (label) en roept bij `ververs:true` na succes `invalidateAll()` aan. Gekoppeld: trigger map (form-action), plan van aanpak, matrix genereren (ververs), brief (ververs), sprint-analyse (ververs), volgende testronde (ververs), testplan, document-analyse, website/reviews-scan. Optimistische lokale updates verwijderd waar `ververs:true` (voorkomt dubbele rijen; data herlaadt uit DB).

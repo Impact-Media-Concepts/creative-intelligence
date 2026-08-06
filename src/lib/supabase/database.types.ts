@@ -16,9 +16,27 @@ export interface Database {
 	public: {
 		Tables: {
 			profiles: {
-				Row: { id: string; naam: string | null; rol: Rol; created_at: string };
-				Insert: { id: string; naam?: string | null; rol?: Rol; created_at?: string };
-				Update: { id?: string; naam?: string | null; rol?: Rol; created_at?: string };
+				Row: {
+					id: string;
+					naam: string | null;
+					rol: Rol;
+					rondleiding_gezien: boolean;
+					created_at: string;
+				};
+				Insert: {
+					id: string;
+					naam?: string | null;
+					rol?: Rol;
+					rondleiding_gezien?: boolean;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					naam?: string | null;
+					rol?: Rol;
+					rondleiding_gezien?: boolean;
+					created_at?: string;
+				};
 				Relationships: [];
 			};
 			clients: {

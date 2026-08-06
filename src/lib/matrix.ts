@@ -2,7 +2,16 @@ import type { Funnelfase, Prioriteit, ConceptStatus } from './supabase/database.
 
 /** Dropdown-opties voor de variabelenmatrix (uit de briefing). */
 export const FUNNELFASES: Funnelfase[] = ['TOFU', 'MOFU', 'BOFU'];
-export const FORMATS = ['Video UGC', 'Static', 'Motion graphic', 'Carousel', 'Anders'] as const;
+export const FORMATS = [
+	'Video UGC',
+	'Video',
+	'AI video',
+	'Static',
+	'AI static',
+	'Motion graphic',
+	'Carousel',
+	'Anders'
+] as const;
 export const STRUCTUREN = [
 	'GRWM',
 	'Probleem-oplossing',
