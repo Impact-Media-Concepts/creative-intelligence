@@ -6,6 +6,14 @@ export interface StrategieConfig {
 	personas?: string[];
 	funnelfases?: string[];
 	middelen?: string[];
+	/** Doelstelling/KPI-focus, bv. "Awareness / engagement" of "Direct rendement (CPA/ROAS)". */
+	doelstelling?: string;
+	/** Concreet target, bv. "streef-ROAS 3, max CPA €30" (vrije tekst). */
+	target?: string;
+	/** Max. aantal varianten per schone test (soft cap; default 3). */
+	maxVarianten?: number;
+	/** Mogen sprints uit verschillende funnellagen parallel draaien? */
+	parallel?: boolean;
 }
 
 export interface StrategieContext {
@@ -39,9 +47,10 @@ const SPRINT_SCHEMA = {
 		wat_testen: { type: 'string' },
 		succescriterium: { type: 'string' },
 		budget: { type: 'string' },
-		duur: { type: 'string' }
+		duur: { type: 'string' },
+		ronde: { type: 'integer' }
 	},
-	required: ['titel', 'focus', 'concepten', 'wat_testen', 'succescriterium', 'budget', 'duur']
+	required: ['titel', 'focus', 'concepten', 'wat_testen', 'succescriterium', 'budget', 'duur', 'ronde']
 };
 
 const SCHEMA = {
@@ -65,25 +74,35 @@ Geef output ALLEEN als valide JSON in dit formaat:
   "doelgroep": "welke persona('s) en waarom (of 'geen specifieke persona')",
   "funnelaanpak": "welke funnellagen, in welke volgorde, en waarom",
   "sprints": [
-    { "titel": "Sprint 1 — ...", "focus": "persona + funnellaag", "concepten": ["invalshoek A", "invalshoek B", "invalshoek C"], "wat_testen": "welke variabele wordt geïsoleerd en waarom", "succescriterium": "meetbaar (drempel + termijn)", "budget": "indicatie", "duur": "bijv. 2 weken" }
+    { "titel": "Sprint 1 — ...", "focus": "persona + funnellaag", "concepten": ["invalshoek A", "invalshoek B", "invalshoek C"], "wat_testen": "welke variabele wordt geïsoleerd en waarom", "succescriterium": "meetbaar (drempel + termijn)", "budget": "indicatie", "duur": "bijv. 2 weken", "ronde": 1 }
   ],
   "aannames": ["aanname 1", "aanname 2"]
 }
 
 METHODE — schoon testen (STRIKT):
-- Testvolgorde is Invalshoek → Format → Structuur → Creator.
-- Maak PER funnellaag ÉÉN invalshoek-test-sprint die ALLE invalshoeken van die laag tegelijk als varianten draait (variabele = invalshoek; format/structuur/creator gelijk). Dus niet 2 invalshoeken in sprint 1 en de rest later — alle invalshoeken van die laag samen in één test. Zet die invalshoeken in "concepten".
-- Zo mappt het plan 1-op-1 op de matrix (per funnel = 1 invalshoek-sprint met die invalshoeken).
-- Pas ná een winnende invalshoek volgen vervolgsprints die de volgende variabele (format → structuur → creator) op de winnaar testen.
+- Testvolgorde is Invalshoek → Format → Structuur → Creator: isoleer per sprint ÉÉN variabele, houd de rest gelijk.
+- Begin per funnellaag met een invalshoek-test die de relevante invalshoeken van die laag tegelijk als varianten draait (variabele = invalshoek). Zet die invalshoeken in "concepten".
+- DATA-GEDREVEN, niet padden: plan alleen tests die de data rechtvaardigt. Passen alle relevante invalshoeken van een laag in één test (≤ max varianten)? Doe dan ÉÉN invalshoek-test en ga daarna door naar de volgende variabele (format/structuur/creator) op de winnaar. Verzin GEEN extra rondes om het plan te vullen.
+- Zijn er MEER relevante invalshoeken dan de max varianten per test? Plan dan meerdere invalshoek-rondes (winnaar draagt door → volgende batch) vóór je naar de volgende variabele gaat.
+- Respecteer de "max varianten per test" uit de sturing (default 3 als niet opgegeven).
 
-FUNNEL-VOLGORDE & LOGICA:
-- Respecteer de gekozen funnellagen en volgorde uit de sturing. Zonder sturing: bepaal zelf een logische volgorde en leg 'm uit in "funnelaanpak".
-- TOFU = awareness/pijnpunt/herkenning; MOFU = overweging/USP/vergelijking/social proof; BOFU = conversie/aanbod/garantie/urgentie.
+PARALLEL & RONDES ("ronde"):
+- Geef elke sprint een "ronde"-nummer. Sprints met hetzelfde rondenummer draaien PARALLEL.
+- Als parallel testen is toegestaan: laat sprints uit verschillende funnellagen (bv. TOFU en BOFU) in dezelfde ronde parallel lopen. Vervolgsprints (die op een winnaar voortbouwen) komen in een latere ronde.
+- Als parallel NIET is toegestaan: geef elke sprint een oplopend, uniek rondenummer (puur sequentieel).
+
+FUNNEL-LOGICA & HERCLASSIFICATIE:
+- TOFU = awareness/pijnpunt/herkenning (geen bewijs/aanbod); MOFU = overweging/USP/vergelijking/SOCIAL PROOF (reviews/ratings/cijfers); BOFU = conversie/aanbod/garantie/urgentie.
+- Staat een invalshoek in een duidelijk VERKEERDE funnelfase (bv. social proof / "X sterren uit Y reviews" / vergelijking in TOFU)? Plaats 'm dan in de JUISTE fase (MOFU/BOFU) en benoem die correctie kort in de samenvatting of aannames.
+
+KPI / DOELSTELLING:
+- Vertel altijd een full-funnel verhaal, maar stem de "succescriterium" van elke sprint af op de doelstelling/target uit de sturing.
+- Bij focus op rendement (CPA/ROAS/aankopen/add-to-cart): geef BOFU-sprints een harde resultaat-norm (bv. ROAS/CPA-target) en geef ook TOFU/MOFU een secundaire conversie-guardrail naast de engagement-metric. Bij awareness-focus: engagement/hook rate/CTR leidend. Verwerk een concreet target letterlijk als het is opgegeven.
 
 REGELS:
-- Respecteer de sturing (persona-scope, funnellagen, beschikbare middelen) STRIKT als die is meegegeven; kies formats alleen uit de beschikbare middelen.
-- Meer persona's = meer sprints/ad sets = meer testing; verwerk dat in de sprints en benoem het.
-- Gebruik de RICE-prioriteit voor de volgorde/nadruk. Bouw voort op bevestigde invalshoeken; stel ontkrachte niet opnieuw voor.
+- Respecteer de sturing (persona-scope, funnellagen, beschikbare middelen) STRIKT; kies formats alleen uit de beschikbare middelen.
+- Gebruik de invalshoeken BREED: prioriteer op RICE (high eerst / meer budget) i.p.v. invalshoeken uit te sluiten. Meer persona's = meer sprints/ad sets = meer testing; benoem dat.
+- Bouw voort op bevestigde invalshoeken; stel ontkrachte niet opnieuw voor.
 - Wees concreet en navolgbaar: de strateeg moet je keuzes kunnen controleren. Benoem expliciete "aannames".
 - Als er FEEDBACK van de strateeg is meegegeven: verwerk die leidend in een herzien plan.
 - Taal: Nederlands. Baseer je op de aangeleverde data — geen aannames verzinnen die niet uit de data volgen.`;
@@ -98,6 +117,10 @@ function bouwContext(ctx: StrategieContext, config: StrategieConfig, feedback?: 
 	if (config.personas?.length) sturing.push(`Persona-scope: ${config.personas.join('; ')}`);
 	if (config.funnelfases?.length) sturing.push(`Funnellagen: ${config.funnelfases.join(', ')}`);
 	if (config.middelen?.length) sturing.push(`Beschikbare middelen: ${config.middelen.join(', ')}`);
+	if (config.doelstelling) sturing.push(`Doelstelling/KPI-focus: ${config.doelstelling}`);
+	if (config.target?.trim()) sturing.push(`Concreet target: ${config.target.trim()}`);
+	sturing.push(`Max varianten per test: ${config.maxVarianten && config.maxVarianten > 0 ? config.maxVarianten : 3}`);
+	sturing.push(`Parallel testen toegestaan: ${config.parallel ? 'ja' : 'nee'}`);
 
 	return [
 		sturing.length ? '## Sturing van de strateeg\n' + sturing.join('\n') : '',

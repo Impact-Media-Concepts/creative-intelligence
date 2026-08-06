@@ -283,10 +283,16 @@
 	let toonRichtlijnen = $state(false);
 
 	// ---- Teststrategie-configuratie (optioneel; leeg = geen beperking) ----
+	const DOELSTELLINGEN = ['Awareness / engagement', 'Balans', 'Direct rendement (CPA/ROAS)'];
+	const MAX_VARIANTEN_OPTIES = [2, 3, 4, 5];
 	let toonStrategie = $state(false);
 	let cfgPersonas = $state<string[]>([]);
 	let cfgFunnels = $state<string[]>([]);
 	let cfgMiddelen = $state<string[]>([]);
+	let cfgDoel = $state('');
+	let cfgTarget = $state('');
+	let cfgMaxVarianten = $state(3);
+	let cfgParallel = $state(false);
 	let personaNamen = $derived(data.personas.map((p) => p.naam).filter(Boolean));
 	function toggleIn(arr: string[], v: string): string[] {
 		return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
@@ -299,14 +305,61 @@
 				: 'border-border text-muted-foreground hover:bg-muted'
 		);
 	}
+	/** Bundelt de teststrategie-configuratie voor de API-calls. */
+	function huidigeConfig() {
+		return {
+			personas: cfgPersonas,
+			funnelfases: cfgFunnels,
+			middelen: cfgMiddelen,
+			doelstelling: cfgDoel,
+			target: cfgTarget,
+			maxVarianten: cfgMaxVarianten,
+			parallel: cfgParallel
+		};
+	}
+	let configActief = $derived(
+		cfgPersonas.length > 0 ||
+			cfgFunnels.length > 0 ||
+			cfgMiddelen.length > 0 ||
+			!!cfgDoel ||
+			!!cfgTarget.trim() ||
+			cfgParallel
+	);
 
-	async function genereerMatrix(extraRichtlijnen = '') {
-		if (concepten.length && !confirm('Een matrix-opzet genereren? De voorgestelde concepten worden toegevoegd aan de bestaande.')) {
-			return;
+	// 3-weg keuze bij genereren met bestaande concepten.
+	let regenOpen = $state(false);
+	let regenExtra = $state('');
+	let regenNaPlan = $state(false);
+
+	/** Beslist of de 3-weg-dialog nodig is (bestaande concepten) of direct genereren kan. */
+	function startGenereren(extra = '', naPlan = false) {
+		if (actief.length === 0) {
+			genereerMatrix(extra, 'toevoegen').then(() => {
+				if (naPlan && !genereerFout) plan = null;
+			});
+		} else {
+			regenExtra = extra;
+			regenNaPlan = naPlan;
+			regenOpen = true;
 		}
+	}
+	async function bevestigRegen(modus: 'toevoegen' | 'opnieuw') {
+		regenOpen = false;
+		await genereerMatrix(regenExtra, modus);
+		if (regenNaPlan && !genereerFout) plan = null;
+		regenExtra = '';
+		regenNaPlan = false;
+	}
+
+	async function genereerMatrix(extraRichtlijnen = '', modus: 'toevoegen' | 'opnieuw' = 'toevoegen') {
 		bezigGenereren = true;
 		genereerFout = null;
 		try {
+			// "Volledig opnieuw": bestaande concepten eerst archiveren.
+			if (modus === 'opnieuw' && actief.length > 0) {
+				await postJSON('/api/concepts', { type: 'archiveer_alle', clientId: data.client.id });
+				concepten = concepten.map((c) => (c.gearchiveerd ? c : { ...c, gearchiveerd: true }));
+			}
 			// Scorekaart-borging: eerst scoren als de backlog nog ongescoord is, zodat de
 			// prioriteit RICE-gedreven is (niet een losse LLM-gok).
 			if (versieId && invalshoeken.some((i) => !i.gearchiveerd && !i.score)) {
@@ -318,7 +371,7 @@
 				type: 'genereer',
 				clientId: data.client.id,
 				richtlijnen: alleRichtlijnen,
-				config: { personas: cfgPersonas, funnelfases: cfgFunnels, middelen: cfgMiddelen }
+				config: huidigeConfig()
 			});
 			concepten.push(...nieuw);
 		} catch (e) {
@@ -342,7 +395,7 @@
 			const { plan: p } = await postJSON<{ plan: StrategiePlan }>('/api/strategie', {
 				type: 'plan',
 				clientId: data.client.id,
-				config: { personas: cfgPersonas, funnelfases: cfgFunnels, middelen: cfgMiddelen },
+				config: huidigeConfig(),
 				feedback
 			});
 			plan = p;
@@ -363,21 +416,21 @@
 		planFout = null;
 		try {
 			await postJSON('/api/strategie', { type: 'goedkeuren', clientId: data.client.id, plan });
-			// Het goedgekeurde plan als strikte sturing meegeven → matrix consistent met het plan.
-			const planContext =
-				'## Afgestemd plan van aanpak (VOLG DIT strikt)\n' +
-				`${plan.samenvatting}\nDoelgroep: ${plan.doelgroep}\nFunnelaanpak: ${plan.funnelaanpak}\n` +
-				'Teststructuur:\n' +
-				plan.sprints
-					.map((s) => `- ${s.titel}: invalshoeken ${(s.concepten ?? []).join(', ')} — ${s.wat_testen}`)
-					.join('\n');
-			await genereerMatrix(planContext);
-			if (!genereerFout) plan = null; // plan verwerkt in de matrix
 		} catch (e) {
 			planFout = e instanceof Error ? e.message : 'Goedkeuren mislukt';
-		} finally {
 			bezigGoedkeuren = false;
+			return;
 		}
+		bezigGoedkeuren = false;
+		// Het goedgekeurde plan als strikte sturing meegeven → matrix consistent met het plan.
+		const planContext =
+			'## Afgestemd plan van aanpak (VOLG DIT strikt)\n' +
+			`${plan.samenvatting}\nDoelgroep: ${plan.doelgroep}\nFunnelaanpak: ${plan.funnelaanpak}\n` +
+			'Teststructuur:\n' +
+			plan.sprints
+				.map((s) => `- ${s.titel}: invalshoeken ${(s.concepten ?? []).join(', ')} — ${s.wat_testen}`)
+				.join('\n');
+		startGenereren(planContext, true);
 	}
 
 	// ---- Rijen slepen om te herordenen (handmatige testvolgorde) ----
@@ -495,7 +548,7 @@
 				{/if}
 			</div>
 			{#if data.heeftTriggerMap && actief.length > 0}
-				<Button variant="outline" onclick={() => genereerMatrix()} disabled={bezigGenereren}>
+				<Button variant="outline" onclick={() => startGenereren()} disabled={bezigGenereren}>
 					{#if bezigGenereren}
 						<LoaderCircle class="size-4 animate-spin" />
 						Genereren…
@@ -539,8 +592,8 @@
 				>
 					<span>
 						Teststrategie (optioneel)
-						<span class="font-normal text-muted-foreground">— persona's, funnellagen & middelen</span>
-						{#if cfgPersonas.length || cfgFunnels.length || cfgMiddelen.length}
+						<span class="font-normal text-muted-foreground">— persona's, funnel, middelen, doel & meer</span>
+						{#if configActief}
 							<span class="ml-1 text-brand-green">· actief</span>
 						{/if}
 					</span>
@@ -583,6 +636,39 @@
 								{/each}
 							</div>
 						</div>
+						<div>
+							<span class="mb-1.5 block font-medium">Doelstelling / KPI</span>
+							<div class="flex flex-wrap gap-1.5">
+								{#each DOELSTELLINGEN as d (d)}
+									<button type="button" class={chipClass(cfgDoel === d)} onclick={() => (cfgDoel = cfgDoel === d ? '' : d)}>
+										{d}
+									</button>
+								{/each}
+							</div>
+						</div>
+						<div>
+							<span class="mb-1.5 block font-medium">Concreet target (optioneel)</span>
+							<Input
+								bind:value={cfgTarget}
+								placeholder="Bijv. streef-ROAS 3, max CPA €30, of 'zoveel mogelijk aankopen/ATC'"
+							/>
+						</div>
+						<div class="flex flex-wrap items-end gap-6">
+							<div>
+								<span class="mb-1.5 block font-medium">Max varianten per test</span>
+								<div class="flex gap-1.5">
+									{#each MAX_VARIANTEN_OPTIES as n (n)}
+										<button type="button" class={chipClass(cfgMaxVarianten === n)} onclick={() => (cfgMaxVarianten = n)}>
+											{n}
+										</button>
+									{/each}
+								</div>
+							</div>
+							<label class="flex cursor-pointer items-center gap-2 py-1.5">
+								<input type="checkbox" bind:checked={cfgParallel} class="size-4 accent-[var(--brand-green)]" />
+								<span>Parallel testen toestaan (funnellagen tegelijk)</span>
+							</label>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -617,7 +703,7 @@
 									<span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-green text-[11px] font-semibold text-white">
 										{i + 1}
 									</span>
-									<span class="font-medium">{s.titel}</span>
+									<span class="font-medium">{s.titel}</span>{#if s.ronde}<span class="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Ronde {s.ronde}</span>{/if}
 								</div>
 								{#if s.focus}<p class="mt-0.5 text-xs text-muted-foreground">{s.focus}</p>{/if}
 								{#if s.concepten?.length}
@@ -961,7 +1047,7 @@
 				basis van je trigger map. Je kunt alles daarna vrij aanpassen.
 			</p>
 			<div class="mt-4 flex flex-wrap justify-center gap-2">
-				<Button onclick={() => genereerMatrix()} disabled={bezigGenereren}>
+				<Button onclick={() => startGenereren()} disabled={bezigGenereren}>
 					<Sparkles class="size-4" />
 					Matrix-opzet genereren
 				</Button>
@@ -1227,3 +1313,37 @@
 		</div>
 	{/if}
 </div>
+
+<!-- 3-weg keuze bij genereren met bestaande concepten -->
+{#if regenOpen}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+		role="button"
+		tabindex="-1"
+		onclick={(e) => {
+			if (e.target === e.currentTarget && !bezigGenereren) regenOpen = false;
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape' && !bezigGenereren) regenOpen = false;
+		}}
+	>
+		<div class="w-full max-w-md rounded-xl border bg-background p-5 shadow-xl">
+			<h2 class="text-base font-semibold">Matrix genereren</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				Er staan al concepten in de matrix. Wat wil je doen?
+			</p>
+			<div class="mt-4 flex flex-col gap-2">
+				<Button onclick={() => bevestigRegen('opnieuw')} disabled={bezigGenereren}>
+					Volledig opnieuw maken
+					<span class="text-xs font-normal opacity-80">— bestaande archiveren</span>
+				</Button>
+				<Button variant="outline" onclick={() => bevestigRegen('toevoegen')} disabled={bezigGenereren}>
+					Toevoegen aan bestaande
+				</Button>
+				<Button variant="ghost" onclick={() => (regenOpen = false)} disabled={bezigGenereren}>
+					Annuleren
+				</Button>
+			</div>
+		</div>
+	</div>
+{/if}

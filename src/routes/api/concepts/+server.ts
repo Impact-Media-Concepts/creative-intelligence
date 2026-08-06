@@ -120,6 +120,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			return json({ ok: true });
 		}
 
+		case 'archiveer_alle': {
+			// Alle actieve (niet-gearchiveerde) concepten van een klant archiveren
+			// (voor "Volledig opnieuw" bij het genereren). RLS beschermt.
+			const clientId = String(body.clientId ?? '');
+			if (!clientId) error(400, 'Ontbrekende klant');
+			const { error: dbFout } = await supabase
+				.from('concepts')
+				.update({ gearchiveerd: true })
+				.eq('client_id', clientId)
+				.eq('gearchiveerd', false);
+			if (dbFout) error(500, dbFout.message);
+			return json({ ok: true });
+		}
+
 		case 'archiveer':
 		case 'herstel': {
 			const id = String(body.id ?? '');
@@ -145,7 +159,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			const matrixConfig = {
 				personas: strArr(rawCfg.personas),
 				funnelfases: strArr(rawCfg.funnelfases),
-				middelen: strArr(rawCfg.middelen)
+				middelen: strArr(rawCfg.middelen),
+				doelstelling: rawCfg.doelstelling ? String(rawCfg.doelstelling) : undefined,
+				target: rawCfg.target ? String(rawCfg.target) : undefined
 			};
 
 			const { data: tm } = await supabase

@@ -71,6 +71,18 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-07-31 — Afstem-interview verfijnd: KPI-doel, data-gedreven rondes, parallel & 3-weg genereren
+- **Wat (feedback-ronde op fase 1+2):**
+  - **KPI/Doelstelling** in de teststrategie-config: keuze (Awareness/engagement · Balans · Direct rendement) + vrij **target**-veld (bv. "streef-ROAS 3, max CPA €30"). Het plan-AI stemt de succescriteria per sprint daarop af (full-funnel, maar met resultaat-guardrails; BOFU hard op ROAS/CPA).
+  - **Data-gedreven testen (niet padden):** het plan doet alleen wat de data rechtvaardigt — past alles in één test (≤ max varianten) → één test en door; méér relevante invalshoeken dan de cap → meerdere invalshoek-rondes (winnaar draagt door). Config: **max varianten per test** (default 3).
+  - **Parallel testen:** toggle + `ronde`-veld op sprints — sprints met hetzelfde rondenummer draaien parallel (bv. TOFU + BOFU tegelijk). Weergegeven als "Ronde X"-badge.
+  - **Funnel-herclassificatie:** plan- én matrix-AI corrigeren nu een duidelijk verkeerd geplaatste invalshoek (bv. social proof/"9,2 uit 4.400+ reviews" in TOFU → MOFU/BOFU), ook op oude backlogs.
+  - **Invalshoeken breder gebruiken:** prioriteren op RICE i.p.v. uitsluiten.
+  - **3-weg genereren:** de ja/nee-melding is nu een dialog met **Volledig opnieuw (bestaande archiveren) · Toevoegen · Annuleren**; nieuwe API-actie `archiveer_alle`.
+- **Bestanden:** `strategie-ai.ts` (config + prompt: data-gedreven/parallel/rondes/KPI/herclassificatie/breed), `matrix-ai.ts` (MatrixConfig doel/target + herclassificatie + KPI), `testplan.ts` (`ronde?` op TestplanSprint), `api/strategie` + `api/concepts` (nieuwe config + `archiveer_alle`), `matrix/+page.svelte` (config-UI uitgebreid, 3-weg-dialog, ronde-badge, `huidigeConfig()`).
+- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon. End-to-end te testen op live.
+- **Migratie:** geen.
+
 ### 2026-07-30 — Trigger Map→Matrix fase 2: afstem-interview (plan van aanpak → goedkeuren → matrix)
 - **Wat:** een afstemstap tussen trigger map en matrix. Bovenaan de matrix een **"Plan van aanpak"-kaart**: (1) teststrategie-config (persona's/funnellagen/middelen — verplaatst hierheen), (2) knop "Plan van aanpak opstellen" → de AI Content Strategy Expert stelt een strategisch plan voor (samenvatting, doelgroep, funnelaanpak, **sprints volgens schoon-testen**, aannames), (3) feedback-box → "Verfijn met feedback" (itereren), (4) "Goedkeuren & matrix genereren" → slaat het plan op als **testplan** (matrix ↔ testplan consistent) én genereert de matrix mét het goedgekeurde plan als strikte sturing.
 - **Schoon testen afgedwongen:** per funnellaag één invalshoek-test-sprint die ÁLLE invalshoeken van die laag samen draait (variabele = invalshoek), daarna vervolg op de winnende variabele. Lost de matrix↔testplan-mismatch (3×3 vs 6 pairwise sprints) op.

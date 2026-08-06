@@ -9,6 +9,8 @@ export interface TestplanSprint {
 	succescriterium: string;
 	budget: string;
 	duur: string;
+	/** Ronde-nummer: sprints met hetzelfde rondenummer kunnen parallel draaien. */
+	ronde?: number;
 }
 
 /** Volledig testplan: korte toelichting op de aanpak + de sprints op volgorde. */

@@ -23,10 +23,17 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			const clientId = String(body.clientId ?? '');
 			if (!clientId) error(400, 'Ontbrekende klant');
 			const feedback = body.feedback == null ? '' : String(body.feedback);
+			const rawCfg = (body.config ?? {}) as Record<string, unknown>;
 			const cfg: StrategieConfig = {
-				personas: strArr(body.config?.personas),
-				funnelfases: strArr(body.config?.funnelfases),
-				middelen: strArr(body.config?.middelen)
+				personas: strArr(rawCfg.personas),
+				funnelfases: strArr(rawCfg.funnelfases),
+				middelen: strArr(rawCfg.middelen),
+				doelstelling: rawCfg.doelstelling ? String(rawCfg.doelstelling) : undefined,
+				target: rawCfg.target ? String(rawCfg.target) : undefined,
+				maxVarianten: Number.isFinite(Number(rawCfg.maxVarianten))
+					? Number(rawCfg.maxVarianten)
+					: undefined,
+				parallel: !!rawCfg.parallel
 			};
 
 			const { data: tm } = await supabase
