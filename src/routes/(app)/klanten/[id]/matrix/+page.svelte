@@ -74,11 +74,11 @@
 		bezigTestplan = true;
 		testplanFout = null;
 		try {
-			const { testplan: tp } = await postJSON<{ testplan: Testplan }>('/api/testplan', {
-				type: 'genereer',
-				clientId: data.client.id,
-				feedback
-			});
+			const { testplan: tp } = await postJSON<{ testplan: Testplan }>(
+				'/api/testplan',
+				{ type: 'genereer', clientId: data.client.id, feedback },
+				{ taak: 'Testplan genereren' }
+			);
 			testplan = tp;
 			feedback = '';
 		} catch (e) {
@@ -367,13 +367,18 @@
 				if (scoresFout) return; // scoren mislukt → niet doorgaan
 			}
 			const alleRichtlijnen = [richtlijnen, extraRichtlijnen].filter((s) => s.trim()).join('\n\n');
-			const { concepten: nieuw } = await postJSON<{ concepten: Concept[] }>('/api/concepts', {
-				type: 'genereer',
-				clientId: data.client.id,
-				richtlijnen: alleRichtlijnen,
-				config: huidigeConfig()
-			});
-			concepten.push(...nieuw);
+			// ververs: true → de data herlaadt na afloop; de nieuwe concepten verschijnen
+			// vanzelf (ook als je intussen naar een ander tabje bent gegaan).
+			await postJSON(
+				'/api/concepts',
+				{
+					type: 'genereer',
+					clientId: data.client.id,
+					richtlijnen: alleRichtlijnen,
+					config: huidigeConfig()
+				},
+				{ taak: 'Matrix genereren', ververs: true }
+			);
 		} catch (e) {
 			genereerFout = e instanceof Error ? e.message : 'Genereren mislukt';
 		} finally {
@@ -392,12 +397,11 @@
 		bezigPlan = true;
 		planFout = null;
 		try {
-			const { plan: p } = await postJSON<{ plan: StrategiePlan }>('/api/strategie', {
-				type: 'plan',
-				clientId: data.client.id,
-				config: huidigeConfig(),
-				feedback
-			});
+			const { plan: p } = await postJSON<{ plan: StrategiePlan }>(
+				'/api/strategie',
+				{ type: 'plan', clientId: data.client.id, config: huidigeConfig(), feedback },
+				{ taak: 'Plan van aanpak opstellen' }
+			);
 			plan = p;
 		} catch (e) {
 			planFout = e instanceof Error ? e.message : 'Plan van aanpak opstellen mislukt';

@@ -7,6 +7,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { TRIGGER_MAP_SECTIES, type Persona, type TekstSectieKey } from '$lib/trigger-map';
 	import { saver, postJSON } from '$lib/saver.svelte';
+	import { startTaak, stopTaak } from '$lib/taken.svelte';
 	import { datumKort } from '$lib/format';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
@@ -147,9 +148,11 @@
 						return;
 					}
 					bezig = true;
+					const taakId = startTaak('Trigger map genereren');
 					return async ({ update }) => {
 						await update();
 						bezig = false;
+						stopTaak(taakId);
 					};
 				}}
 			>

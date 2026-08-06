@@ -64,11 +64,11 @@
 		bezigAnalyse[c.id] = true;
 		fout = null;
 		try {
-			const { analyse } = await postJSON<{ analyse: Analyse }>('/api/sprint', {
-				type: 'analyse',
-				id: c.id
-			});
-			c.ai_analyse = analyse as unknown as Concept['ai_analyse'];
+			await postJSON<{ analyse: Analyse }>(
+				'/api/sprint',
+				{ type: 'analyse', id: c.id },
+				{ taak: 'Learning-analyse', ververs: true }
+			);
 		} catch (e) {
 			fout = e instanceof Error ? e.message : 'Analyse mislukt';
 		} finally {
@@ -83,8 +83,7 @@
 			const { concepten: nieuw, volgendeVariabele } = await postJSON<{
 				concepten: Concept[];
 				volgendeVariabele: string;
-			}>('/api/sprint', { type: 'vervolg', id: c.id });
-			concepten.push(...nieuw);
+			}>('/api/sprint', { type: 'vervolg', id: c.id }, { taak: 'Volgende testronde', ververs: true });
 			vervolgMelding = `${nieuw.length} nieuwe concepten aangemaakt om "${volgendeVariabele}" te testen (invalshoek + winnende variabelen gelijk gehouden). Je vindt ze in de Matrix.`;
 		} catch (e) {
 			fout = e instanceof Error ? e.message : 'Volgende testronde genereren mislukt';

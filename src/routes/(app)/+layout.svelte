@@ -2,6 +2,8 @@
 	import { page } from '$app/state';
 	import { cn } from '$lib/utils';
 	import { APP_NAAM, ORGANISATIE } from '$lib/config';
+	import { taken } from '$lib/taken.svelte';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import type { ClientStatus } from '$lib/supabase/database.types';
 	import Users from '@lucide/svelte/icons/users';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -159,3 +161,20 @@
 		{@render children()}
 	</main>
 </div>
+
+<!-- App-brede indicator voor lopende achtergrondtaken (blijft staan bij navigeren) -->
+{#if taken.lijst.length > 0}
+	<div
+		class="fixed bottom-4 right-4 z-50 flex max-w-xs items-center gap-2.5 rounded-lg border border-brand-lime/40 bg-card px-3.5 py-2.5 text-sm shadow-lg"
+	>
+		<LoaderCircle class="size-4 shrink-0 animate-spin text-brand-green" />
+		<div class="min-w-0">
+			<p class="truncate font-medium text-foreground">{taken.lijst[taken.lijst.length - 1].label}…</p>
+			<p class="text-xs text-muted-foreground">
+				Draait door — je kunt gerust verder werken{taken.lijst.length > 1
+					? ` (${taken.lijst.length} taken)`
+					: ''}
+			</p>
+		</div>
+	</div>
+{/if}

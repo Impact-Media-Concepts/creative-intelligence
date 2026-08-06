@@ -71,6 +71,13 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-08-01 — Achtergrondtaken: generaties lopen door bij navigeren + app-brede indicator
+- **Wat:** AI-generaties werden nooit echt afgebroken (gewone fetch zonder abort), maar de spinner leefde alleen in dat ene tabje. Nu: een **gedeelde taak-store** (`src/lib/taken.svelte.ts`) + **app-brede indicator** (rechtsonder, blijft staan bij navigeren) en **auto-verversen** na afloop, zodat het resultaat verschijnt ook als je intussen weg bent geklikt.
+- **Techniek:** `postJSON(url, body, { taak, ververs })` registreert een achtergrondtaak (label) en roept bij `ververs:true` na succes `invalidateAll()` aan. Gekoppeld: trigger map (form-action), plan van aanpak, matrix genereren (ververs), brief (ververs), sprint-analyse (ververs), volgende testronde (ververs), testplan, document-analyse, website/reviews-scan. Optimistische lokale updates verwijderd waar `ververs:true` (voorkomt dubbele rijen; data herlaadt uit DB).
+- **Aanleiding:** gebruiker: taak stopte gevoelsmatig bij tabje-wisselen; moet doorlopen.
+- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon.
+- **Migratie:** geen.
+
 ### 2026-07-31 — Afstem-interview verfijnd: KPI-doel, data-gedreven rondes, parallel & 3-weg genereren
 - **Wat (feedback-ronde op fase 1+2):**
   - **KPI/Doelstelling** in de teststrategie-config: keuze (Awareness/engagement · Balans · Direct rendement) + vrij **target**-veld (bv. "streef-ROAS 3, max CPA €30"). Het plan-AI stemt de succescriteria per sprint daarop af (full-funnel, maar met resultaat-guardrails; BOFU hard op ROAS/CPA).

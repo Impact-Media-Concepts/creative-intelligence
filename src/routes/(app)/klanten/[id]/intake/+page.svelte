@@ -5,6 +5,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import AutoSaveField from '$lib/components/app/AutoSaveField.svelte';
 	import { saver, postIntake } from '$lib/intake-saver.svelte';
+	import { startTaak, stopTaak } from '$lib/taken.svelte';
 	import { berekenIntakeProgress, heeftInhoud } from '$lib/progress';
 	import { cn } from '$lib/utils';
 	import {
@@ -158,7 +159,7 @@
 		try {
 			const { velden } = await postIntake<{
 				velden: { invalshoeken: string; website_taal: string; kansen: string };
-			}>({ type: 'scan_concurrent', id: c.id, url, clientId, naam: c.naam });
+			}>({ type: 'scan_concurrent', id: c.id, url, clientId, naam: c.naam }, { taak: 'Website-scan' });
 			c.invalshoeken = velden.invalshoeken;
 			c.website_taal = velden.website_taal;
 			c.kansen = velden.kansen;
@@ -179,12 +180,10 @@
 		scanBezig[r.id] = true;
 		scanFout = null;
 		try {
-			const { ruwe_tekst } = await postIntake<{ ruwe_tekst: string }>({
-				type: 'scan_reviews',
-				id: r.id,
-				url,
-				clientId
-			});
+			const { ruwe_tekst } = await postIntake<{ ruwe_tekst: string }>(
+				{ type: 'scan_reviews', id: r.id, url, clientId },
+				{ taak: 'Reviews-scan' }
+			);
 			r.ruwe_tekst = ruwe_tekst;
 			scanKey[r.id] = (scanKey[r.id] ?? 0) + 1;
 		} catch (e) {
@@ -442,6 +441,7 @@
 		}
 		parsing = true;
 		parseStatus = '';
+		const taakId = startTaak('Document analyseren');
 		try {
 			let data: Voorstel;
 			if (bestand?.mediaType === 'application/pdf' && bestand.buf) {
@@ -496,6 +496,7 @@
 		} finally {
 			parsing = false;
 			parseStatus = '';
+			stopTaak(taakId);
 		}
 	}
 

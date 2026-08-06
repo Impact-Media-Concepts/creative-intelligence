@@ -73,11 +73,11 @@
 		bezig[c.id] = true;
 		fout = null;
 		try {
-			const { brief: b } = await postJSON<{ brief: Brief }>('/api/sprint', {
-				type: 'brief',
-				id: c.id
-			});
-			c.brief = b as unknown as Concept['brief'];
+			await postJSON<{ brief: Brief }>(
+				'/api/sprint',
+				{ type: 'brief', id: c.id },
+				{ taak: 'Brief genereren', ververs: true }
+			);
 		} catch (e) {
 			fout = e instanceof Error ? e.message : 'Brief genereren mislukt';
 		} finally {
