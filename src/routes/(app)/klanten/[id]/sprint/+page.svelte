@@ -100,7 +100,11 @@
 <div class="space-y-5">
 	<!-- Kop -->
 	<div class="flex flex-wrap items-start justify-between gap-3">
-		<div>
+		<div
+			data-tour-order="1"
+			data-tour-title="Sprint — testen & resultaten"
+			data-tour-text="Hier voer je de resultaten in (hook rate, CTR, ROAS, CPA), laat je Claude de learning bepalen en markeer je de winnaar. Een winnaar zet de bijbehorende invalshoek op 'werkt' — zo sluit de loop."
+		>
 			<h2 class="text-lg font-semibold">Sprint</h2>
 			<p class="text-sm text-muted-foreground">
 				Voer per concept de resultaten in, laat Claude de learning bepalen, en markeer de winnaar.

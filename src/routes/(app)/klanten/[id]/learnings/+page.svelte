@@ -52,7 +52,11 @@
 </script>
 
 <div class="space-y-6">
-	<div>
+	<div
+		data-tour-order="1"
+		data-tour-title="Learnings — de loop sluit"
+		data-tour-text="Het geheugen van de klant: wat werkte, welke invalshoeken bevestigd of ontkracht zijn, en de winnaars. Deze learnings voeden automatisch de volgende matrix-ronde — zo wordt elke ronde slimmer."
+	>
 		<h2 class="text-lg font-semibold">Learnings</h2>
 		<p class="text-sm text-muted-foreground">
 			Wat elke test heeft opgeleverd — automatisch samengevat uit je sprintresultaten. Het geheugen

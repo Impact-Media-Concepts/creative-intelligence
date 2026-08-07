@@ -87,7 +87,11 @@
 </script>
 
 <div class="space-y-5">
-	<div>
+	<div
+		data-tour-order="1"
+		data-tour-title="Brief"
+		data-tour-text="Per concept genereer je een productieklare creative brief — automatisch afgestemd op het format (video, statisch, carousel). Kopieer of exporteer 'm zo naar je creator."
+	>
 		<h2 class="text-lg font-semibold">Creative briefs</h2>
 		<p class="text-sm text-muted-foreground">
 			Genereer per concept een productieklare creative brief op basis van je trigger map. Dit is de

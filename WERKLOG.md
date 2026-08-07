@@ -71,6 +71,13 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-08-02 — Rondleiding omgebouwd tot spotlight-tour (zelf-bijwerkend)
+- **Wat:** de statische carousel is vervangen door een echte **spotlight-rondleiding** die je door de tool **navigeert**: hij loopt de fasen langs (Overzicht → Intake → Trigger Map → Matrix → Brief → Sprint → Learnings), spotlight per element met korte uitleg (waarom + hoe), en dimt de rest. Klik-blocker tijdens de tour; Vorige/Volgende; scroll-into-view; herberekent bij scroll/resize.
+- **Zelf-bijwerkend:** de stappen worden **runtime uit de DOM ontdekt** — elk element met `data-tour-title` (+ `data-tour-text`, optioneel `data-tour-order`) wordt automatisch een spotlight-stap. Een nieuwe functie annoteren = 'm automatisch in de rondleiding opnemen; lege secties worden overgeslagen. De sectie-volgorde (routes) staat centraal in `Rondleiding.svelte`.
+- **Techniek:** `Rondleiding.svelte` herschreven (engine met `goto` tussen routes + spotlight via box-shadow-cutout + tooltip). Layout geeft `base` mee (huidige of eerste klant). `data-tour-*`-markeringen toegevoegd op sleutel-elementen: Creative Loop, volgende-stap, dashboard, intake-tabs, document-upload, trigger map-secties + persona's, plan van aanpak, test-backlog, matrix-tabel, brief, sprint, learnings.
+- **Verificatie:** `svelte-check` 0 fouten; dev-server boot schoon. Visueel te testen op live (login vereist). NB: migratie 0010 (rondleiding_gezien) blijft nodig voor auto-start-onthouden.
+- **Migratie:** geen nieuwe (0010 uit vorige stap).
+
 ### 2026-08-01 — Rondleiding + extra formats
 - **Rondleiding:** nieuwe stap-voor-stap rondleiding (`Rondleiding.svelte`, eigen lichte overlay, 8 stappen: welkom → overzicht/loop → intake → trigger map → plan/matrix → brief → sprint/learnings → tips). Knop "Rondleiding" in de zijbalk (altijd te openen). **Auto-start voor nieuwe gebruikers** (1×) via profielvlag `profiles.rondleiding_gezien` (strikt `=== false`, dus vóór migratie geen auto-start). Sluiten zet de vlag via `POST /api/profiel` (service-role).
 - **MIGRATIE 0010_rondleiding.sql (MOET GEDRAAID WORDEN):** `profiles.rondleiding_gezien boolean not null default false`. Tot die tijd werkt de knop wel, maar wordt de vlag niet onthouden.

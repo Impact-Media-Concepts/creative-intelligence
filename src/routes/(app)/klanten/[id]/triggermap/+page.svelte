@@ -227,7 +227,12 @@
 		</div>
 
 		<!-- Tekstsecties -->
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+		<div
+			class="grid grid-cols-1 gap-4 md:grid-cols-2"
+			data-tour-order="2"
+			data-tour-title="Trigger Map — het klantbeeld"
+			data-tour-text="Claude distilleert de intake tot een helder klantbeeld: pijnpunten, wensen, bezwaren, taal van de doelgroep en kansen. Dit vormt de onderbouwing voor alles wat je gaat testen. Je kunt alles vrij bijstellen."
+		>
 			{#each TRIGGER_MAP_SECTIES as sectie (sectie.key)}
 				<Card.Root>
 					<Card.Header>
@@ -274,7 +279,12 @@
 		</div>
 
 		<!-- Persona's / doelgroep-segmenten -->
-		<div class="space-y-3">
+		<div
+			class="space-y-3"
+			data-tour-order="3"
+			data-tour-title="Persona's"
+			data-tour-text="De doelgroep-segmenten die uit de intake komen. Ze bepalen straks op wie je test — en meer persona's betekent meer campagnes/tests. De invalshoeken zelf (wat je gaat testen) verschijnen geprioriteerd in de Matrix."
+		>
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<div>
 					<h3 class="text-base font-semibold">Persona's / doelgroep-segmenten</h3>

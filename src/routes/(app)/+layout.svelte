@@ -26,6 +26,14 @@
 	let inKlant = $derived(!!huidigeKlant && pad.startsWith(`/klanten/${klantId}`));
 
 	// ---- Rondleiding: auto-start voor nieuwe gebruikers (1×), altijd te heropenen ----
+	// De tour loopt de fasen van een klant langs; gebruik de huidige klant of anders de eerste.
+	let tourBase = $derived(
+		klantId
+			? `/klanten/${klantId}`
+			: data.clients?.[0]?.id
+				? `/klanten/${data.clients[0].id}`
+				: null
+	);
 	let rondleidingOpen = $state(false);
 	let rondleidingAutoGecheckt = false;
 	$effect(() => {
@@ -194,7 +202,7 @@
 	</main>
 </div>
 
-<Rondleiding bind:open={rondleidingOpen} onSluiten={markeerRondleidingGezien} />
+<Rondleiding bind:open={rondleidingOpen} base={tourBase} onSluiten={markeerRondleidingGezien} />
 
 <!-- App-brede indicator voor lopende achtergrondtaken (blijft staan bij navigeren) -->
 {#if taken.lijst.length > 0}

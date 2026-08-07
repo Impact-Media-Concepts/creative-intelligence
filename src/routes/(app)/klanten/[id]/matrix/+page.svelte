@@ -578,7 +578,12 @@
 
 	<!-- Plan van aanpak (afstem-interview vóór de matrix) -->
 	{#if data.heeftTriggerMap}
-		<section class="space-y-4 rounded-lg border border-brand-lime/40 bg-brand-mint/20 p-4">
+		<section
+			class="space-y-4 rounded-lg border border-brand-lime/40 bg-brand-mint/20 p-4"
+			data-tour-order="1"
+			data-tour-title="Plan van aanpak"
+			data-tour-text="Vóór de matrix stem je de strategie af: kies persona's, funnellagen, middelen en je doel/KPI, laat de AI Content Strategy Expert een plan voorstellen, geef feedback en keur goed. Pas dan rollen matrix én testplan consistent uit — schoon testen, één variabele per test."
+		>
 			<div>
 				<h3 class="text-base font-semibold">Plan van aanpak</h3>
 				<p class="text-sm text-muted-foreground">
@@ -766,7 +771,12 @@
 
 	<!-- Test-backlog: geprioriteerde invalshoeken uit de trigger map (inklapbaar) -->
 	{#if data.heeftTriggerMap}
-		<section class="rounded-lg border">
+		<section
+			class="rounded-lg border"
+			data-tour-order="2"
+			data-tour-title="Test-backlog"
+			data-tour-text="De invalshoeken uit je trigger map, automatisch geprioriteerd op RICE (Bereik · Impact · Bewijskracht ÷ Effort). De bovenste test je als eerste; je kunt scores bijstellen."
+		>
 			<button
 				type="button"
 				class="flex w-full items-center gap-2 p-4 text-left"
@@ -1074,7 +1084,12 @@
 
 	<!-- Tabel -->
 	{#if actief.length > 0}
-		<div class="overflow-x-auto rounded-lg border">
+		<div
+			class="overflow-x-auto rounded-lg border"
+			data-tour-order="3"
+			data-tour-title="De variabelenmatrix"
+			data-tour-text="Je concrete testconcepten. Sleep rijen (⠿) om de testvolgorde te bepalen; per rij zie je funnelfase, invalshoek, format, hypothese en prioriteit. Dit is de uitvoerlijst voor je sprints."
+		>
 			<table class="w-full min-w-[1180px] border-collapse text-sm">
 				<thead>
 					<tr class="border-b bg-muted/50 text-left text-xs font-medium text-muted-foreground">

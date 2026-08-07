@@ -40,6 +40,9 @@
 <a
 	href={`${base}/${data.volgendeStap.tab}`}
 	class="mb-6 flex items-center justify-between gap-4 rounded-xl border border-brand-lime/40 bg-brand-mint/40 px-5 py-4 transition-colors hover:bg-brand-mint/60"
+	data-tour-order="2"
+	data-tour-title="Volgende stap"
+	data-tour-text="Weet je even niet wat te doen? Deze kaart denkt met je mee en wijst steeds de logische vervolgstap aan — van intake tot volgende testronde."
 >
 	<div>
 		<p class="text-xs font-medium uppercase tracking-wide text-brand-green">Volgende stap</p>
@@ -55,7 +58,12 @@
 </a>
 
 <!-- Reis-dashboard -->
-<div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+<div
+	class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+	data-tour-order="3"
+	data-tour-title="Reis-dashboard"
+	data-tour-text="In één oogopslag waar deze klant staat: intake-%, aantal invalshoeken, concepten, geteste sprints en winnaars. Elke tegel is klikbaar."
+>
 	{#each tegels as t (t.label)}
 		<a
 			href={t.href}

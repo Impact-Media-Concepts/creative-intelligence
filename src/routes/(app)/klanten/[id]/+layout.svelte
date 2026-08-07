@@ -57,7 +57,12 @@
 
 	<!-- Creative Loop: volledig op het overzicht, compact op de werk-tabs -->
 	{#if pad === base}
-		<div class="mt-6 rounded-xl border bg-card p-4">
+		<div
+			class="mt-6 rounded-xl border bg-card p-4"
+			data-tour-order="1"
+			data-tour-title="De Creative Loop"
+			data-tour-text="Het hart van de tool: elke klant doorloopt deze 7 stappen (Intake → Trigger Map → Matrix → Sprint) en start daarna opnieuw met de learnings. De ring licht op bij de huidige fase; klik een bolletje om er direct heen te springen."
+		>
 			<CreativeLoop fase={client.huidige_fase} {base} />
 		</div>
 	{:else}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 	import X from '@lucide/svelte/icons/x';
@@ -6,181 +8,233 @@
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import Check from '@lucide/svelte/icons/check';
 
-	let { open = $bindable(false), onSluiten }: { open?: boolean; onSluiten?: () => void } = $props();
+	// base = "/klanten/{id}" (of null als er geen klant is). onSluiten wordt bij afsluiten aangeroepen.
+	let { open = $bindable(false), base, onSluiten }: {
+		open?: boolean;
+		base: string | null;
+		onSluiten?: () => void;
+	} = $props();
+
+	/**
+	 * De secties (routes) die de tour langsloopt. Nieuwe secties → hier toevoegen.
+	 * De STAPPEN per sectie worden automatisch ontdekt uit de DOM: elk element met
+	 * data-tour-title (+ data-tour-text, optioneel data-tour-order) wordt een spotlight-stap.
+	 * Dus een nieuwe functie annoteren = 'm automatisch in de rondleiding opnemen.
+	 */
+	const SECTIE_SUBS: { label: string; sub: string }[] = [
+		{ label: 'Overzicht', sub: '' },
+		{ label: 'Intake', sub: '/intake' },
+		{ label: 'Trigger Map', sub: '/triggermap' },
+		{ label: 'Matrix', sub: '/matrix' },
+		{ label: 'Brief', sub: '/brief' },
+		{ label: 'Sprint', sub: '/sprint' },
+		{ label: 'Learnings', sub: '/learnings' }
+	];
 
 	interface Stap {
 		titel: string;
-		intro: string;
-		punten: string[];
+		tekst: string;
+		el: HTMLElement | null;
 	}
 
-	const STAPPEN: Stap[] = [
-		{
-			titel: 'Welkom bij Creative Intelligence',
-			intro:
-				'Deze tool brengt je van klant-input naar een compleet, getest creatief plan — via de "Creative Loop". In een paar stappen laten we zien hoe het werkt.',
-			punten: [
-				'Per klant een eigen omgeving met alle fasen.',
-				'AI ondersteunt elke stap; jij houdt de regie (goedkeuren/bijsturen).',
-				'Je kunt deze rondleiding altijd opnieuw openen via de knop in de zijbalk.'
-			]
-		},
-		{
-			titel: '1. Overzicht & de Creative Loop',
-			intro:
-				'Op de klantpagina zie je bovenaan de Creative Loop-ring en een reis-dashboard.',
-			punten: [
-				'Het dashboard toont per fase de voortgang.',
-				'De kaart "Volgende stap" wijst je steeds de logische vervolgactie.',
-				'De ring-stappen zijn klikbaar — spring direct naar een fase.'
-			]
-		},
-		{
-			titel: '2. Intake — de basis',
-			intro:
-				'Alles begint met een goede intake. Hoe vollediger, hoe sterker de rest. Er zijn 6 bronnen.',
-			punten: [
-				'Klantgesprek, interne interviews, concurrentie, reviews, eigen data en "overig".',
-				'Upload documenten (PDF, Excel, afbeelding) — de tool verdeelt de inhoud automatisch over de juiste bronnen.',
-				'Reeds ingevulde velden worden aangevuld, niet overschreven.'
-			]
-		},
-		{
-			titel: '3. Trigger Map — het klantbeeld',
-			intro:
-				'Claude distilleert de intake tot een helder klantbeeld dat de basis vormt voor je tests.',
-			punten: [
-				'Pijnpunten, wensen, bezwaren, taal van de doelgroep en persona’s.',
-				'De invalshoeken (wat je gaat testen) verschijnen — automatisch geprioriteerd (RICE) — in de matrix.',
-				'Bewerk vrij; een nieuwe generatie maakt een nieuwe versie (oude blijft bewaard).'
-			]
-		},
-		{
-			titel: '4. Plan van aanpak & Matrix',
-			intro:
-				'Vóór de matrix stem je de teststrategie af met de AI Content Strategy Expert — zodat je achteraf niets meer hoeft te tweaken.',
-			punten: [
-				'Kies (optioneel) persona’s, funnellagen, beschikbare middelen en je doel/KPI.',
-				'De AI stelt een plan voor (met onderbouwing); geef feedback en keur goed.',
-				'Daarna rollen matrix én testplan consistent uit — schoon testen: één variabele per test.',
-				'Sleep rijen om de testvolgorde te bepalen.'
-			]
-		},
-		{
-			titel: '5. Brief',
-			intro:
-				'Per concept genereer je een productieklare creative brief voor je creator.',
-			punten: [
-				'De brief past zich aan het format aan (video, statisch, carousel).',
-				'Kopieer naar het klembord of exporteer als bestand voor je creator.'
-			]
-		},
-		{
-			titel: '6. Sprint & Learnings',
-			intro:
-				'Je voert de resultaten in, bepaalt de winnaar en legt de learnings vast — de loop sluit zich.',
-			punten: [
-				'Vul metrics in (hook rate, CTR, ROAS, CPA) en laat Claude de learning bepalen.',
-				'Markeer een winnaar → de bijbehorende invalshoek wordt "Getest — werkt".',
-				'De Learnings-tab voedt automatisch de volgende ronde — zo wordt elke ronde slimmer.'
-			]
-		},
-		{
-			titel: 'Klaar!',
-			intro: 'Je kent nu de hele Creative Loop. Nog een paar handige weetjes:',
-			punten: [
-				'AI-taken lopen gewoon door als je naar een ander tabje gaat (indicator rechtsonder).',
-				'Volg de "Volgende stap"-kaart op het overzicht als je even niet weet wat te doen.',
-				'Deze rondleiding staat altijd klaar via de knop in de zijbalk.'
-			]
-		}
-	];
+	let actief = $state(false);
+	let sectieIdx = $state(0);
+	let stapIdx = $state(0);
+	let stappen = $state<Stap[]>([]);
+	let rect = $state<{ top: number; left: number; width: number; height: number } | null>(null);
 
-	let i = $state(0);
-	// Reset naar de eerste stap telkens als de rondleiding opent.
+	let secties = $derived(base ? SECTIE_SUBS.map((s) => ({ label: s.label, pad: base + s.sub })) : []);
+	let huidige = $derived(stappen[stapIdx] ?? null);
+	let laatste = $derived(sectieIdx >= secties.length - 1 && stapIdx >= stappen.length - 1);
+	let eerste = $derived(sectieIdx === 0 && stapIdx === 0);
+
 	$effect(() => {
-		if (open) i = 0;
+		if (open && !actief && base) start();
+		if (!open && actief) actief = false;
 	});
 
-	let laatste = $derived(i === STAPPEN.length - 1);
+	async function start() {
+		actief = true;
+		await laadSectie(0, 'vooruit');
+	}
 
-	function sluit() {
+	async function laadSectie(idx: number, richting: 'vooruit' | 'terug') {
+		if (idx < 0) return;
+		if (idx >= secties.length) return klaar();
+		sectieIdx = idx;
+		rect = null;
+		await goto(secties[idx].pad, { noScroll: true }).catch(() => {});
+		await tick();
+		await wacht(220); // laat de pagina + data renderen
+		const els = Array.from(document.querySelectorAll<HTMLElement>('[data-tour-title]')).filter(
+			(el) => el.offsetParent !== null
+		);
+		els.sort(
+			(a, b) =>
+				Number(a.getAttribute('data-tour-order') ?? '0') -
+				Number(b.getAttribute('data-tour-order') ?? '0')
+		);
+		stappen = els.map((el) => ({
+			titel: el.getAttribute('data-tour-title') ?? '',
+			tekst: el.getAttribute('data-tour-text') ?? '',
+			el
+		}));
+		if (stappen.length === 0) {
+			// Lege sectie → automatisch overslaan.
+			return laadSectie(richting === 'vooruit' ? idx + 1 : idx - 1, richting);
+		}
+		stapIdx = richting === 'vooruit' ? 0 : stappen.length - 1;
+		await toon();
+	}
+
+	async function toon() {
+		const el = stappen[stapIdx]?.el;
+		if (!el) {
+			rect = null;
+			return;
+		}
+		el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		await wacht(320);
+		meet();
+	}
+
+	function meet() {
+		const el = stappen[stapIdx]?.el;
+		if (!el) {
+			rect = null;
+			return;
+		}
+		const r = el.getBoundingClientRect();
+		rect = { top: r.top, left: r.left, width: r.width, height: r.height };
+	}
+
+	async function volgende() {
+		if (stapIdx < stappen.length - 1) {
+			stapIdx++;
+			await toon();
+		} else {
+			await laadSectie(sectieIdx + 1, 'vooruit');
+		}
+	}
+	async function vorige() {
+		if (stapIdx > 0) {
+			stapIdx--;
+			await toon();
+		} else if (sectieIdx > 0) {
+			await laadSectie(sectieIdx - 1, 'terug');
+		}
+	}
+	function klaar() {
+		actief = false;
 		open = false;
 		onSluiten?.();
 	}
+	function wacht(ms: number) {
+		return new Promise((r) => setTimeout(r, ms));
+	}
+
+	// Spotlight herberekenen bij scroll/resize.
+	$effect(() => {
+		if (!actief) return;
+		const h = () => meet();
+		window.addEventListener('resize', h);
+		window.addEventListener('scroll', h, true);
+		return () => {
+			window.removeEventListener('resize', h);
+			window.removeEventListener('scroll', h, true);
+		};
+	});
+
+	// Tooltip links geklemd binnen het scherm; boven of onder het element.
+	let tipLeft = $derived(
+		rect ? Math.min(Math.max(12, rect.left), (globalThis.innerWidth ?? 1200) - 372) : 0
+	);
+	let tipBoven = $derived(
+		rect ? (globalThis.innerHeight ?? 800) - (rect.top + rect.height) < 240 : false
+	);
 </script>
 
-{#if open}
+{#if actief}
+	<!-- Klik-blocker (interactie uit tijdens de tour) -->
+	<div class="fixed inset-0 z-[70]" aria-hidden="true"></div>
+
+	{#if rect}
+		<!-- Spotlight rond het element -->
+		<div
+			class="pointer-events-none fixed z-[71] rounded-lg ring-2 ring-brand-lime transition-all duration-200"
+			style="top:{rect.top - 6}px; left:{rect.left - 6}px; width:{rect.width + 12}px; height:{rect.height + 12}px; box-shadow:0 0 0 9999px rgba(0,0,0,0.55);"
+		></div>
+	{:else}
+		<div class="pointer-events-none fixed inset-0 z-[71] bg-black/55"></div>
+	{/if}
+
+	<!-- Tooltip -->
 	<div
-		class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-		role="button"
-		tabindex="-1"
-		onclick={(e) => {
-			if (e.target === e.currentTarget) sluit();
-		}}
-		onkeydown={(e) => {
-			if (e.key === 'Escape') sluit();
-		}}
+		class="fixed z-[72] w-[360px] max-w-[calc(100vw-24px)] rounded-xl border bg-background p-4 shadow-xl"
+		style={rect
+			? tipBoven
+				? `bottom:${(globalThis.innerHeight ?? 800) - rect.top + 12}px; left:${tipLeft}px;`
+				: `top:${rect.top + rect.height + 12}px; left:${tipLeft}px;`
+			: 'top:50%; left:50%; transform:translate(-50%,-50%);'}
 	>
-		<div class="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-background shadow-xl">
-			<!-- Header -->
-			<div class="flex items-center justify-between border-b px-5 py-3.5">
-				<div class="flex items-center gap-2">
-					<span class="text-[11px] font-semibold uppercase tracking-widest text-brand-green">
-						Rondleiding
-					</span>
-					<span class="text-xs text-muted-foreground">Stap {i + 1} / {STAPPEN.length}</span>
-				</div>
+		<div class="mb-2 flex items-center justify-between">
+			<span class="text-[11px] font-semibold uppercase tracking-widest text-brand-green">
+				{secties[sectieIdx]?.label ?? 'Rondleiding'}
+			</span>
+			<div class="flex items-center gap-2">
+				<span class="text-xs text-muted-foreground">
+					{secties.length ? `${sectieIdx + 1}/${secties.length}` : ''}
+				</span>
 				<button
 					type="button"
-					onclick={sluit}
-					class="rounded-md p-1 text-muted-foreground hover:bg-muted"
-					aria-label="Sluiten"
+					onclick={klaar}
+					class="rounded-md p-0.5 text-muted-foreground hover:bg-muted"
+					aria-label="Rondleiding sluiten"
 				>
 					<X class="size-4" />
 				</button>
 			</div>
+		</div>
 
-			<!-- Body -->
-			<div class="flex-1 overflow-y-auto px-5 py-5">
-				<h2 class="text-lg font-semibold text-foreground">{STAPPEN[i].titel}</h2>
-				<p class="mt-1.5 text-sm text-muted-foreground">{STAPPEN[i].intro}</p>
-				<ul class="mt-4 space-y-2">
-					{#each STAPPEN[i].punten as punt (punt)}
-						<li class="flex gap-2.5 text-sm">
-							<span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-lime"></span>
-							<span>{punt}</span>
-						</li>
-					{/each}
-				</ul>
-			</div>
+		{#if huidige}
+			<h3 class="text-base font-semibold text-foreground">{huidige.titel}</h3>
+			{#if huidige.tekst}
+				<p class="mt-1 text-sm text-muted-foreground">{huidige.tekst}</p>
+			{/if}
+		{:else}
+			<h3 class="text-base font-semibold text-foreground">Rondleiding</h3>
+			<p class="mt-1 text-sm text-muted-foreground">
+				{base
+					? 'Even laden…'
+					: 'Open eerst een klant (of maak er een aan) om de rondleiding door de fasen te starten.'}
+			</p>
+		{/if}
 
-			<!-- Footer -->
-			<div class="flex items-center justify-between gap-3 border-t px-5 py-3.5">
-				<div class="flex gap-1.5">
-					{#each STAPPEN as _, s (s)}
-						<span class={cn('size-1.5 rounded-full', s === i ? 'bg-brand-green' : 'bg-border')}></span>
+		<div class="mt-4 flex items-center justify-between gap-3">
+			{#if stappen.length > 1}
+				<div class="flex gap-1">
+					{#each stappen as _, s (s)}
+						<span class={cn('size-1.5 rounded-full', s === stapIdx ? 'bg-brand-green' : 'bg-border')}></span>
 					{/each}
 				</div>
-				<div class="flex gap-2">
-					{#if i > 0}
-						<Button variant="ghost" size="sm" onclick={() => (i -= 1)}>
-							<ArrowLeft class="size-4" />
-							Vorige
-						</Button>
-					{/if}
-					{#if laatste}
-						<Button size="sm" onclick={sluit}>
-							<Check class="size-4" />
-							Aan de slag
-						</Button>
-					{:else}
-						<Button size="sm" onclick={() => (i += 1)}>
-							Volgende
-							<ArrowRight class="size-4" />
-						</Button>
-					{/if}
-				</div>
+			{:else}
+				<span></span>
+			{/if}
+			<div class="flex gap-2">
+				{#if !eerste}
+					<Button variant="ghost" size="sm" onclick={vorige}>
+						<ArrowLeft class="size-4" /> Vorige
+					</Button>
+				{/if}
+				{#if laatste}
+					<Button size="sm" onclick={klaar}>
+						<Check class="size-4" /> Klaar
+					</Button>
+				{:else}
+					<Button size="sm" onclick={volgende}>
+						Volgende <ArrowRight class="size-4" />
+					</Button>
+				{/if}
 			</div>
 		</div>
 	</div>

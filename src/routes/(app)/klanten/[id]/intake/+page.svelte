@@ -631,15 +631,26 @@
 				<span class="text-muted-foreground">Alle wijzigingen opgeslagen</span>
 			{/if}
 		</div>
-		<Button variant="outline" size="sm" onclick={openUpload}>
-			<Upload class="size-4" />
-			Document uploaden
-		</Button>
+		<div
+			data-tour-order="2"
+			data-tour-title="Document uploaden"
+			data-tour-text="Upload een klantgesprek, reviews-uitdraai of concurrentie-analyse (PDF, Excel, afbeelding of tekst). De AI leest het — ook grafieken en tabellen — en verdeelt de inhoud automatisch over de juiste bronnen. Bestaande velden worden aangevuld."
+		>
+			<Button variant="outline" size="sm" onclick={openUpload}>
+				<Upload class="size-4" />
+				Document uploaden
+			</Button>
+		</div>
 	</div>
 </div>
 
 <!-- Bron-tabs -->
-<div class="flex flex-wrap gap-2">
+<div
+	class="flex flex-wrap gap-2"
+	data-tour-order="1"
+	data-tour-title="Intake — de basis"
+	data-tour-text="Hier verzamel je alles over de klant, verdeeld over 6 bronnen (klantgesprek, interne interviews, concurrentie, reviews, eigen data, overig). Hoe vollediger de intake, hoe sterker alles wat de tool daarna maakt."
+>
 	{#each tabs as t (t.key)}
 		<button
 			type="button"
