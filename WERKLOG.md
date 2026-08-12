@@ -71,6 +71,14 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-08-05 — AI-calls via de usage-proxy (i.p.v. directe Anthropic SDK)
+- **Wat:** alle Claude-calls lopen nu via de Online Klik **usage-proxy** i.p.v. de Anthropic-SDK. `claude.ts` herschreven: POST naar `API_USAGE_URL` met header `X-API-Usage-Key` en body `{ connection_id, payload:{ system, messages, max_tokens } }` → antwoord `{ output, usage }`. `trigger-map-generator.ts` gebruikt nu ook `claudeJSON` (geen directe SDK meer).
+- **Belangrijk contract:** de proxy ondersteunt GEEN `output_config` (json_schema) of `thinking`. JSON dwingen we af via de system-prompt (onze prompts vragen al "UITSLUITEND valide JSON" + extra strikte suffix) en een **robuuste parser** (strip ```-fences, val terug op eerste `{…}`/`[…]`). `effort` wordt genegeerd (signatuur blijft voor compat). Retry op 429/5xx + nette overbelast-melding.
+- **Signatuur `claudeJSON` ongewijzigd** → alle callers (matrix-ai, strategie-ai, scoring-ai, sprint-ai, intake-parser, web-scan) werken onveranderd.
+- **Env:** nieuw `API_USAGE_KEY` (SECRET, alleen env — repo is publiek), `API_USAGE_CONNECTION_ID`, `API_USAGE_URL`. `ANTHROPIC_API_KEY` niet meer gebruikt. **MOET in Vercel gezet worden** anders faalt AI op live.
+- **Geverifieerd (curl):** proxy-response `{output, usage}`; met strikte JSON-instructie geeft 'ie schone JSON; `system` wordt doorgegeven. NB nog te testen op live: document-upload (content-blokken/vision via de proxy) + grote JSON-generaties.
+- **Migratie:** geen. Beveiliging: de in de chat geplakte key moet geroteerd worden.
+
 ### 2026-08-02 — Rondleiding omgebouwd tot spotlight-tour (zelf-bijwerkend)
 - **Wat:** de statische carousel is vervangen door een echte **spotlight-rondleiding** die je door de tool **navigeert**: hij loopt de fasen langs (Overzicht → Intake → Trigger Map → Matrix → Brief → Sprint → Learnings), spotlight per element met korte uitleg (waarom + hoe), en dimt de rest. Klik-blocker tijdens de tour; Vorige/Volgende; scroll-into-view; herberekent bij scroll/resize.
 - **Zelf-bijwerkend:** de stappen worden **runtime uit de DOM ontdekt** — elk element met `data-tour-title` (+ `data-tour-text`, optioneel `data-tour-order`) wordt automatisch een spotlight-stap. Een nieuwe functie annoteren = 'm automatisch in de rondleiding opnemen; lege secties worden overgeslagen. De sectie-volgorde (routes) staat centraal in `Rondleiding.svelte`.

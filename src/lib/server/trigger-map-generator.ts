@@ -1,5 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk';
-import { anthropic, CLAUDE_MODEL } from './claude';
+import { claudeJSON } from './claude';
 import type { TriggerMapData } from '$lib/trigger-map';
 import { BRON1_VRAGEN, BRON2_VRAGEN } from '$lib/intake-vragen';
 import { heeftInhoud } from '$lib/progress';
@@ -189,44 +188,8 @@ export interface GeneratieResultaat {
 	duurMs: number;
 }
 
-/** Roept Claude aan en geeft de trigger map + metadata voor logging terug. */
+/** Roept het model (via de proxy) aan en geeft de trigger map + metadata voor logging terug. */
 export async function genereerTriggerMap(intakeTekst: string): Promise<GeneratieResultaat> {
 	const prompt = `Hieronder de beschikbare intake-data. Genereer op basis hiervan de trigger map.\n\n${intakeTekst}`;
-	const start = Date.now();
-
-	const response = await anthropic.messages.create({
-		model: CLAUDE_MODEL,
-		max_tokens: 16000,
-		// Adaptive thinking: model denkt zelf na over de diepte (denk-tokens tellen mee in max_tokens).
-		thinking: { type: 'adaptive' },
-		system: SYSTEM_PROMPT,
-		messages: [{ role: 'user', content: prompt }],
-		// Structured outputs: garandeert valide JSON volgens het schema.
-		// 'medium' i.p.v. 'high': trigger map is de zwaarste generatie (meeste output) —
-		// bij 'high' liep 'ie tegen de ~67s aan, óver de Vercel-timeout van 60s.
-		output_config: { effort: 'medium', format: { type: 'json_schema', schema: TRIGGER_MAP_SCHEMA } }
-	} as Anthropic.Messages.MessageCreateParamsNonStreaming);
-
-	const duurMs = Date.now() - start;
-	const tekst = response.content
-		.filter((b): b is Anthropic.TextBlock => b.type === 'text')
-		.map((b) => b.text)
-		.join('');
-
-	let data: TriggerMapData;
-	try {
-		data = JSON.parse(tekst) as TriggerMapData;
-	} catch {
-		throw new Error('Claude gaf geen valide JSON terug.');
-	}
-
-	return {
-		data,
-		model: response.model,
-		prompt,
-		response: tekst,
-		tokensInput: response.usage.input_tokens,
-		tokensOutput: response.usage.output_tokens,
-		duurMs
-	};
+	return claudeJSON<TriggerMapData>(SYSTEM_PROMPT, prompt, TRIGGER_MAP_SCHEMA, 16000, 'medium');
 }
