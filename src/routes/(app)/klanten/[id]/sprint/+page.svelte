@@ -5,18 +5,43 @@
 	import * as Card from '$lib/components/ui/card';
 	import { saver, postJSON } from '$lib/saver.svelte';
 	import { cn } from '$lib/utils';
+	import { page } from '$app/state';
 	import type { Concept } from '$lib/supabase/database.types';
 	import type { Analyse } from '$lib/sprint';
 	import { METRIC_VELDEN } from '$lib/sprint';
 	import { TESTVOLGORDE } from '$lib/matrix';
+	import { conceptAdCode } from '$lib/meta';
+	import MetaKoppeling from '$lib/components/app/MetaKoppeling.svelte';
 	import Brain from '@lucide/svelte/icons/brain';
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import GitBranch from '@lucide/svelte/icons/git-branch';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import Check from '@lucide/svelte/icons/check';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import Link2 from '@lucide/svelte/icons/link-2';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
 
 	let { data } = $props();
+
+	const clientId = $derived(page.params.id ?? '');
+	const heeftMeta = $derived(!!data.metaConnectie);
+
+	async function koppelAd(c: Concept, adId: string) {
+		c.meta_ad_external_id = adId || null;
+		await postJSON('/api/meta', {
+			type: 'link',
+			conceptId: c.id,
+			ad_external_id: adId || null
+		});
+	}
+	async function toggleAutoSync(c: Concept) {
+		c.meta_auto_sync = !c.meta_auto_sync;
+		await postJSON('/api/meta', {
+			type: 'toggle_auto_sync',
+			conceptId: c.id,
+			waarde: c.meta_auto_sync
+		});
+	}
 
 	// svelte-ignore state_referenced_locally
 	let concepten = $state<Concept[]>(data.concepten.map((c) => ({ ...c })));
@@ -136,6 +161,9 @@
 		<span class="text-muted-foreground">· markeer de winnaar en maak er een vervolgtest van.</span>
 	</div>
 
+	<!-- Meta-koppeling: automatisch resultaten uitlezen -->
+	<MetaKoppeling {clientId} connectie={data.metaConnectie} />
+
 	{#if fout}
 		<div class="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
 			<TriangleAlert class="size-4 shrink-0" />
@@ -174,14 +202,22 @@
 								<span class="text-xs text-muted-foreground">· test: {c.variabele}</span>
 							{/if}
 						</div>
-						<Button
-							variant={c.is_winnaar ? 'default' : 'outline'}
-							size="sm"
-							onclick={() => toggleWinnaar(c)}
-						>
-							<Trophy class="size-4" />
-							{c.is_winnaar ? 'Winnaar' : 'Markeer als winnaar'}
-						</Button>
+						<div class="flex items-center gap-2">
+							{#if c.auto_winnaar}
+								<Badge variant="outline" class="border-brand-lime/50 bg-brand-lime/15 text-brand-green">
+									<Sparkles class="mr-1 size-3" />
+									Automatisch gemarkeerd
+								</Badge>
+							{/if}
+							<Button
+								variant={c.is_winnaar ? 'default' : 'outline'}
+								size="sm"
+								onclick={() => toggleWinnaar(c)}
+							>
+								<Trophy class="size-4" />
+								{c.is_winnaar ? 'Winnaar' : 'Markeer als winnaar'}
+							</Button>
+						</div>
 					</div>
 				</Card.Header>
 
@@ -212,6 +248,47 @@
 							placeholder="Bijv. veel vrouwen in comments die het delen met hun man; hoge saves, weinig clicks…"
 						/>
 					</div>
+
+					<!-- Meta-koppeling per concept -->
+					{#if heeftMeta}
+						<div class="flex flex-col gap-2 rounded-md border border-dashed bg-muted/20 p-3">
+							<div class="flex flex-wrap items-center gap-2">
+								<Link2 class="size-4 shrink-0 text-muted-foreground" />
+								<span class="text-xs text-muted-foreground">Gekoppelde advertentie:</span>
+								<select
+									value={c.meta_ad_external_id ?? ''}
+									onchange={(e) => koppelAd(c, e.currentTarget.value)}
+									class={cn(veldClass, 'max-w-xs')}
+								>
+									<option value="">— niet gekoppeld —</option>
+									{#each data.metaAds as ad (ad.external_id)}
+										<option value={ad.external_id}>{ad.naam || ad.external_id}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+								<label class="inline-flex cursor-pointer items-center gap-1.5">
+									<input
+										type="checkbox"
+										checked={c.meta_auto_sync}
+										onchange={() => toggleAutoSync(c)}
+										class="size-3.5 accent-brand-green"
+									/>
+									Metrics automatisch bijwerken
+								</label>
+								<span>
+									Ad-naam code:
+									<code class="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">{conceptAdCode(c.id)}</code>
+								</span>
+								{#if c.meta_laatste_sync}
+									<span class="inline-flex items-center gap-1 text-brand-green">
+										<Check class="size-3" />
+										Bijgewerkt {new Date(c.meta_laatste_sync).toLocaleDateString('nl-NL')}
+									</span>
+								{/if}
+							</div>
+						</div>
+					{/if}
 
 					<!-- Acties -->
 					<div class="flex flex-wrap gap-2">

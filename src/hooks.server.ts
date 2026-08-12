@@ -4,8 +4,12 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Database } from '$lib/supabase/database.types';
 
-/** Routes die toegankelijk zijn zonder ingelogde sessie. */
-const PUBLIEKE_PADEN = ['/login', '/auth'];
+/**
+ * Routes die toegankelijk zijn zonder ingelogde sessie.
+ * /api/cron wordt door Vercel Cron aangeroepen (geen cookie) en beschermt zichzelf
+ * met CRON_SECRET; zonder deze uitzondering zou de auth-guard 'm naar /login sturen.
+ */
+const PUBLIEKE_PADEN = ['/login', '/auth', '/api/cron'];
 
 function isPubliek(pathname: string): boolean {
 	return PUBLIEKE_PADEN.some((p) => pathname === p || pathname.startsWith(p + '/'));

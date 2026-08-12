@@ -71,6 +71,17 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-08-12 — Sprint-automatisering: Meta-koppeling (OAuth + dagelijkse sync + guardrail)
+- **Wat:** advertentieresultaten worden automatisch uit Meta gelezen en per concept verwerkt. Volledig **additief** — zonder koppeling verandert er niets aan de bestaande flow.
+- **Datamodel (migratie `0011_meta_ads.sql` — MOET gedraaid worden):** `meta_connections` (1 gekoppeld advertentieaccount + long-lived token per klant), `meta_ads` (advertentiecatalogus + ruwe metrics per sync), en op `concepts`: `meta_ad_external_id`, `meta_auto_sync`, `meta_metrics`, `meta_laatste_sync`, `auto_winnaar`. RLS via `can_access_client()`.
+- **Serverlaag (`src/lib/server/meta/`):** `client.ts` (Graph API v21: token-exchange, `/me/adaccounts`, ads, dagelijkse insights, paging + retry), `metrics.ts` (insights → hook/hold/ctr/roas/cpa in dezelfde units als de Sprint-invoer), `guardrail.ts` (conservatieve auto-winnaar), `sync.ts` (orkestratie). Client-safe helpers in `src/lib/meta.ts`.
+- **Automatisch koppelen:** zet de code `[CL-xxxxxxxx]` (zie per concept in de Sprint-UI) in de Meta-advertentienaam → de sync koppelt concept ⇢ advertentie vanzelf. Handmatig koppelen via dropdown kan ook.
+- **Guardrail (drempels in `src/lib/meta.ts`):** markeert alleen een winnaar bij ≥ €75 spend, ≥ 1000 impressies, ≥ 3 dagen actief, ≥ 5 aankopen (bij ROAS) én ≥ 15% voorsprong op de beste andere variant in de testgroep (zelfde funnelfase + variabele). Nooit als er al een winnaar is. Winnaar → invalshoek op "Getest — werkt". **Vervolgronde blijft altijd 1 klik handmatig.**
+- **OAuth + cron:** `GET /api/meta/connect` (FB-dialog + CSRF-cookie), `GET /api/meta/callback` (token-exchange + opslaan), `POST /api/meta` (accounts/set_account/sync_now/disconnect/link/toggle_auto_sync), `GET /api/cron/meta-sync` (dagelijks 05:00 UTC via `vercel.json`, beschermd met `CRON_SECRET`). `/api/cron` toegevoegd aan de publieke paden in `hooks.server.ts`.
+- **UI:** `MetaKoppeling.svelte`-paneel bovenaan de Sprint (koppelen/sync-nu/account wisselen/verbreken) + per concept: koppel-dropdown, "metrics automatisch bijwerken"-schakelaar, ad-code, en een "Automatisch gemarkeerd"-badge.
+- **Env (nieuw, in Vercel zetten):** `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`, `META_API_VERSION`, `CRON_SECRET`. Meta-app vereist `ads_read` (Advanced Access via App Review) + de redirect-URI whitelisten.
+- **Robuustheid:** de Sprint-loader leest alleen `.data` (nooit throw) → vóór de migratie valt het Meta-paneel weg en werkt de pagina onveranderd. Cron-route getest: 401 zonder secret, bereikt handler mét secret. `npm run check` = 0 errors.
+
 ### 2026-08-05 — AI-calls via de usage-proxy (i.p.v. directe Anthropic SDK)
 - **Wat:** alle Claude-calls lopen nu via de Online Klik **usage-proxy** i.p.v. de Anthropic-SDK. `claude.ts` herschreven: POST naar `API_USAGE_URL` met header `X-API-Usage-Key` en body `{ connection_id, payload:{ system, messages, max_tokens } }` → antwoord `{ output, usage }`. `trigger-map-generator.ts` gebruikt nu ook `claudeJSON` (geen directe SDK meer).
 - **Belangrijk contract:** de proxy ondersteunt GEEN `output_config` (json_schema) of `thinking`. JSON dwingen we af via de system-prompt (onze prompts vragen al "UITSLUITEND valide JSON" + extra strikte suffix) en een **robuuste parser** (strip ```-fences, val terug op eerste `{…}`/`[…]`). `effort` wordt genegeerd (signatuur blijft voor compat). Retry op 429/5xx + nette overbelast-melding.
