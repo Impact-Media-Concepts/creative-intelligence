@@ -5,7 +5,7 @@ import { syncConnection } from '$lib/server/meta/sync';
 import type { RequestHandler } from './$types';
 
 // Dagelijkse sync over alle koppelingen; ruime timeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 /** Controleert het Vercel-cron-secret (Authorization: Bearer <CRON_SECRET>). */
 function checkCronSecret(request: Request) {

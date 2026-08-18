@@ -16,7 +16,7 @@ const BRON2_NUMMERS = new Set(BRON2_VRAGEN.map((v) => v.nummer));
 const MAX_DOC_LENGTE = 100_000;
 
 // De 'parse'-actie roept Claude aan (adaptive thinking); ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 const BRON3_VELDEN = [
 	'naam',

@@ -5,7 +5,7 @@ import { genereerInvalshoekScores } from '$lib/server/scoring-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 
 // AI-scoring van de invalshoeken; ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 const SECTIE_KEYS = TRIGGER_MAP_SECTIES.map((s) => s.key) as string[];
 const FUNNELFASES = ['TOFU', 'MOFU', 'BOFU'];

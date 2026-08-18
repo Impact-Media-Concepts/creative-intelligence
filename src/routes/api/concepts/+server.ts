@@ -9,7 +9,7 @@ import { afgeleidePrioriteit, type InvalshoekScore } from '$lib/trigger-map';
 type ConceptInsert = Database['public']['Tables']['concepts']['Insert'];
 
 // AI-generatie met adaptive thinking duurt langer; ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 const TEKST_VELDEN = ['invalshoek', 'format', 'structuur', 'creator_type', 'hypothese', 'variabele', 'onderbouwing'];
 const FUNNEL = FUNNELFASES as string[];

@@ -7,7 +7,7 @@ import { CLAUDE_MODEL } from '$lib/server/claude';
 import type { StrategiePlan } from '$lib/testplan';
 
 // AI-generatie met adaptive thinking; ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 const strArr = (v: unknown) =>
 	Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : undefined;

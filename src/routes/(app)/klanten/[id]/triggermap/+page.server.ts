@@ -9,7 +9,7 @@ import type { Invalshoek } from '$lib/trigger-map';
 import type { Json } from '$lib/supabase/database.types';
 
 // AI-generatie met adaptive thinking duurt langer; ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 /** Voldoende Bron 1-input om een zinnige trigger map te genereren (drempel, niet alles). */
 function bron1Volledig(rows: Array<{ vraag_nummer: number; antwoord: string | null }>): boolean {

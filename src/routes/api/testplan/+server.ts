@@ -5,7 +5,7 @@ import { genereerTestplan } from '$lib/server/testplan-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 
 // AI-generatie met adaptive thinking duurt langer; ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, user } }) => {
 	if (!user) error(401, 'Niet ingelogd');

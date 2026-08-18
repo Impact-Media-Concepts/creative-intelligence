@@ -5,7 +5,7 @@ import { fetchAccount, fetchAdAccounts } from '$lib/server/meta/client';
 import { syncConnection } from '$lib/server/meta/sync';
 
 // Sync-nu haalt Meta-data op; ruimere Vercel-functietimeout.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 /** Leest de koppeling van een klant via RLS (geeft null zonder toegang). */
 async function laadConnectie(supabase: App.Locals['supabase'], clientId: string) {
