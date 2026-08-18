@@ -71,14 +71,28 @@ function parseJSON<T>(tekst: string): T {
 	throw new Error('Claude gaf geen valide JSON terug.');
 }
 
+/** Eén bericht in een (multi-turn) gesprek. */
+export interface ChatBericht {
+	role: 'user' | 'assistant';
+	content: string | Anthropic.Messages.ContentBlockParam[];
+}
+
 async function proxyCall(
 	system: string,
 	content: string | Anthropic.Messages.ContentBlockParam[],
 	maxTokens: number
 ): Promise<ProxyRespons> {
+	return proxyCallMessages(system, [{ role: 'user', content }], maxTokens);
+}
+
+async function proxyCallMessages(
+	system: string,
+	messages: ChatBericht[],
+	maxTokens: number
+): Promise<ProxyRespons> {
 	const body = JSON.stringify({
 		connection_id: CONNECTION_ID,
-		payload: { system, messages: [{ role: 'user', content }], max_tokens: maxTokens }
+		payload: { system, messages, max_tokens: maxTokens }
 	});
 
 	const maxPogingen = 4;
@@ -143,6 +157,35 @@ export async function claudeJSON<T>(
 				? prompt
 				: prompt.map((b) => (b.type === 'text' ? b.text : `[${b.type}]`)).join('\n'),
 		response: tekst,
+		tokensInput: res.usage?.input_tokens ?? 0,
+		tokensOutput: res.usage?.output_tokens ?? 0,
+		duurMs
+	};
+}
+
+export interface ClaudeChatResultaat {
+	antwoord: string;
+	tokensInput: number;
+	tokensOutput: number;
+	duurMs: number;
+}
+
+/**
+ * Multi-turn gesprek (spar-modus): geeft een gewoon tekstantwoord terug (geen JSON).
+ * De caller bouwt de system-prompt (rol + context) en levert de berichtgeschiedenis.
+ */
+export async function claudeChat(
+	system: string,
+	messages: ChatBericht[],
+	maxTokens = 4000
+): Promise<ClaudeChatResultaat> {
+	const start = Date.now();
+	const res = await proxyCallMessages(system, messages, maxTokens);
+	const duurMs = Date.now() - start;
+	const antwoord = res.output ?? '';
+	if (!antwoord) throw new Error(res.error || res.message || 'Lege respons van de AI-proxy.');
+	return {
+		antwoord,
 		tokensInput: res.usage?.input_tokens ?? 0,
 		tokensOutput: res.usage?.output_tokens ?? 0,
 		duurMs

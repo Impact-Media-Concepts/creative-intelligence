@@ -71,6 +71,14 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-08-18 — Spar-modus bij de Matrix (Fase 1) + creator_type-fix + AI-timeout 300s
+- **Spar-modus (Fase 1):** naast het one-shot "genereren" kun je nu bij de Matrix éérst met een AI-strateeg sparren (vragen stellen, suggesties bespreken) en pas bij akkoord doorvoeren. Nieuw herbruikbaar `SparPaneel.svelte` + `POST /api/spar` (`bericht` = chatbeurt met strateeg-persona die trigger map + huidige matrix + je middelen/config ziet; `samenvatting` = distilleert het gesprek tot een concrete sturing; `wis`). "Voer besproken wijzigingen door" → hergenereert de matrix met die sturing (via de bestaande 3-weg-flow). Multi-turn chat-helper `claudeChat` toegevoegd in `claude.ts` (proxy `messages`-array, prose-antwoord).
+- **Gesprek bewaren:** migratie `0012_spar.sql` → tabel `spar_berichten` (per klant + onderwerp, RLS). Opslaan is niet-fataal: werkt ook vóór de migratie (dan zonder historie). Loader `matrix/+page.server.ts` leest de historie (graceful, alleen `.data`). Dit is de opmaat naar het self-learning loop-geheugen (Fase 2).
+- **creator_type-fix:** matrix-prompt dwingt nu samenhang af met de beschikbare middelen — static-only ⇒ "Klantvisual"/"Merk-eigen visual", NOOIT "UGC"/"Klant/UGC" (dat impliceert video).
+- **AI-timeout:** alle AI-routes van 60s → **300s** (Vercel Pro-max) om `FUNCTION_INVOCATION_TIMEOUT` bij grote plan/matrix-generaties te voorkomen.
+- **Nog te doen door gebruiker:** migratie 0011 (Meta) én 0012 (spar) draaien in Supabase. `npm run check` = 0 errors.
+- **Volgende (Fase 2):** per-klant loop-geheugen — gedistilleerde besluiten/feedback/winnaars die in élke generatie meewegen, zodat de loop cumulatief slimmer wordt.
+
 ### 2026-08-12 — Sprint-automatisering: Meta-koppeling (OAuth + dagelijkse sync + guardrail)
 - **Wat:** advertentieresultaten worden automatisch uit Meta gelezen en per concept verwerkt. Volledig **additief** — zonder koppeling verandert er niets aan de bestaande flow.
 - **Datamodel (migratie `0011_meta_ads.sql` — MOET gedraaid worden):** `meta_connections` (1 gekoppeld advertentieaccount + long-lived token per klant), `meta_ads` (advertentiecatalogus + ruwe metrics per sync), en op `concepts`: `meta_ad_external_id`, `meta_auto_sync`, `meta_metrics`, `meta_laatste_sync`, `auto_winnaar`. RLS via `can_access_client()`.

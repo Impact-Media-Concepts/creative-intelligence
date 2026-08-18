@@ -543,6 +543,36 @@ export interface Database {
 				};
 				Relationships: [];
 			};
+			spar_berichten: {
+				Row: {
+					id: string;
+					client_id: string;
+					onderwerp: string;
+					rol: 'user' | 'assistant';
+					tekst: string;
+					gebruiker_id: string | null;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					client_id: string;
+					onderwerp: string;
+					rol: 'user' | 'assistant';
+					tekst: string;
+					gebruiker_id?: string | null;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					client_id?: string;
+					onderwerp?: string;
+					rol?: 'user' | 'assistant';
+					tekst?: string;
+					gebruiker_id?: string | null;
+					created_at?: string;
+				};
+				Relationships: [];
+			};
 		};
 		Views: Record<string, never>;
 		Functions: {
@@ -562,3 +592,4 @@ export type Concept = Database['public']['Tables']['concepts']['Row'];
 export type AiLog = Database['public']['Tables']['ai_logs']['Row'];
 export type MetaConnection = Database['public']['Tables']['meta_connections']['Row'];
 export type MetaAd = Database['public']['Tables']['meta_ads']['Row'];
+export type SparBericht = Database['public']['Tables']['spar_berichten']['Row'];

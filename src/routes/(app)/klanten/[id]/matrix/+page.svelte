@@ -29,6 +29,7 @@
 	import type { Testplan, StrategiePlan } from '$lib/testplan';
 	import { SPRINT_VELDEN } from '$lib/testplan';
 	import { Input } from '$lib/components/ui/input';
+	import SparPaneel from '$lib/components/app/SparPaneel.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Archive from '@lucide/svelte/icons/archive';
@@ -325,6 +326,23 @@
 			!!cfgTarget.trim() ||
 			cfgParallel
 	);
+
+	/** Korte, leesbare context voor de spar-strateeg (zodat 'ie o.a. je middelen kent). */
+	function sparContext(): string {
+		const r: string[] = [];
+		r.push(
+			cfgMiddelen.length
+				? `Beschikbare middelen (formats): ${cfgMiddelen.join(', ')}.`
+				: 'Beschikbare middelen: geen beperking opgegeven.'
+		);
+		if (cfgPersonas.length) r.push(`Persona-scope: ${cfgPersonas.join(', ')}.`);
+		if (cfgFunnels.length) r.push(`Funnel-scope: ${cfgFunnels.join(', ')}.`);
+		if (cfgDoel) r.push(`Doelstelling/KPI: ${cfgDoel}.`);
+		if (cfgTarget.trim()) r.push(`Target: ${cfgTarget.trim()}.`);
+		if (cfgParallel) r.push('Parallel testen toegestaan.');
+		if (richtlijnen.trim()) r.push(`Extra sturing die al is ingevuld: ${richtlijnen.trim()}`);
+		return r.join('\n');
+	}
 
 	// 3-weg keuze bij genereren met bestaande concepten.
 	let regenOpen = $state(false);
@@ -1043,6 +1061,19 @@
 				</p>
 			{/if}
 		</div>
+	{/if}
+
+	<!-- Spar-modus: overleg met de strateeg, voer daarna pas door -->
+	{#if data.heeftTriggerMap}
+		<SparPaneel
+			clientId={data.client.id}
+			onderwerp="matrix"
+			startBerichten={data.sparBerichten}
+			context={sparContext}
+			onToepassen={(sturing) => startGenereren(sturing)}
+			titel="Spar over de matrix"
+			intro={'Overleg met de AI-strateeg over de opzet — stel vragen, doe suggesties, bespreek twijfels (bijv. creator type, persona-verdeling). Er verandert niets aan de matrix tot je op "Voer besproken wijzigingen door" klikt; dan hergenereert de matrix op basis van jullie gesprek.'}
+		/>
 	{/if}
 
 	<!-- Voorstel uit trigger map -->
