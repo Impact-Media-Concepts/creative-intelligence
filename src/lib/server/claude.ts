@@ -77,6 +77,31 @@ export interface ChatBericht {
 	content: string | Anthropic.Messages.ContentBlockParam[];
 }
 
+/** Vertaalt een proxy-/providerfout naar een begrijpelijke, actiegerichte melding. */
+function proxyFoutmelding(status: number, bodyTekst: string): string {
+	let code = '';
+	let msg = '';
+	try {
+		const j = JSON.parse(bodyTekst);
+		code = String(j.error ?? '');
+		msg = String(j.message ?? '');
+	} catch {
+		// geen JSON-body
+	}
+	const c = `${code} ${msg} ${bodyTekst}`.toLowerCase();
+	if (c.includes('credit balance') || c.includes('too low'))
+		return 'Het AI-tegoed is op. Vul credits bij op het Anthropic-account achter de usage-proxy (en zet auto-reload aan).';
+	if (c.includes('provider_request_failed'))
+		return 'De AI-provider is niet bereikbaar (mogelijk is het tegoed op of hapert de provider). Controleer de credits en de koppeling in de usage-proxy.';
+	if (c.includes('invalid_api_key') || c.includes('x-api-usage-key'))
+		return 'De AI-proxysleutel ontbreekt of is ongeldig. Controleer API_USAGE_KEY in de omgeving.';
+	if (status === 429 || c.includes('overloaded') || c.includes('rate limit'))
+		return 'De AI-dienst is tijdelijk overbelast. Wacht ~30 seconden en probeer opnieuw.';
+	if (status >= 500)
+		return 'De AI-dienst gaf een serverfout. Probeer het zo opnieuw; blijft het, controleer de usage-proxy.';
+	return `AI-proxy fout (${status}): ${bodyTekst.slice(0, 200)}`;
+}
+
 async function proxyCall(
 	system: string,
 	content: string | Anthropic.Messages.ContentBlockParam[],
@@ -114,15 +139,15 @@ async function proxyCallMessages(
 		if (res.ok) return (await res.json().catch(() => ({}))) as ProxyRespons;
 
 		const status = res.status;
-		if ((status === 429 || status >= 500) && poging < maxPogingen) {
+		const tekst = await res.text().catch(() => '');
+		// Tegoed op / provider onbereikbaar / ongeldige sleutel herstelt niet vanzelf →
+		// niet retryen (scheelt trage 4× pogingen), meteen een duidelijke melding.
+		const providerFail = /provider_request_failed|credit balance|too low|invalid_api_key/i.test(tekst);
+		if (!providerFail && (status === 429 || status >= 500) && poging < maxPogingen) {
 			await wacht(poging);
 			continue;
 		}
-		const tekst = await res.text().catch(() => '');
-		if (status === 429 || status >= 500) {
-			throw new Error('De AI-dienst is tijdelijk overbelast. Wacht ~30 seconden en probeer opnieuw.');
-		}
-		throw new Error(`AI-proxy fout (${status}): ${tekst.slice(0, 300)}`);
+		throw new Error(proxyFoutmelding(status, tekst));
 	}
 	throw laatste ?? new Error('AI-proxy call mislukt');
 }
