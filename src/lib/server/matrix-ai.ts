@@ -4,9 +4,13 @@ import type { Funnelfase, Prioriteit } from '$lib/supabase/database.types';
 export interface VoorgesteldConcept {
 	funnelfase: Funnelfase;
 	invalshoek: string;
+	aanbod?: string;
 	format: string;
 	structuur: string;
 	creator_type: string;
+	hook?: string;
+	cta?: string;
+	awareness?: string;
 	hypothese: string;
 	variabele: string;
 	prioriteit: Prioriteit;
@@ -81,9 +85,13 @@ const SCHEMA = {
 				properties: {
 					funnelfase: { type: 'string', enum: ['TOFU', 'MOFU', 'BOFU'] },
 					invalshoek: { type: 'string' },
+					aanbod: { type: 'string' },
 					format: { type: 'string' },
 					structuur: { type: 'string' },
 					creator_type: { type: 'string' },
+					hook: { type: 'string' },
+					cta: { type: 'string' },
+					awareness: { type: 'string' },
 					hypothese: { type: 'string' },
 					variabele: { type: 'string' },
 					prioriteit: { type: 'string', enum: ['Hoog', 'Middel', 'Laag'] },
@@ -111,7 +119,7 @@ const SYSTEM = `Je bent een Creative Social Ads Strateeg bij Online Klik. Op bas
 Geef output ALLEEN als valide JSON in dit formaat:
 {
   "concepten": [
-    { "funnelfase": "TOFU/MOFU/BOFU", "invalshoek": "...", "format": "...", "structuur": "...", "creator_type": "...", "hypothese": "...", "variabele": "...", "prioriteit": "Hoog/Middel/Laag", "onderbouwing": "..." }
+    { "funnelfase": "TOFU/MOFU/BOFU", "awareness": "Onbewust/Probleembewust/Oplossingsbewust/Productbewust/Meest bewust", "aanbod": "...", "invalshoek": "...", "format": "...", "structuur": "...", "creator_type": "...", "hook": "...", "cta": "...", "hypothese": "...", "variabele": "...", "prioriteit": "Hoog/Middel/Laag", "onderbouwing": "..." }
   ]
 }
 
@@ -121,6 +129,10 @@ Richtlijnen:
 - CRUCIAAL — schoon testen: omdat je nu de invalshoek test, moeten de andere variabelen GELIJK blijven zodat het verschil alleen door de invalshoek komt. Kies daarom PER FUNNELFASE één vast "format", één vaste "structuur" en één vast "creator_type", en gebruik die identiek voor alle concepten binnen die fase. Alleen "invalshoek" (en de bijbehorende "hypothese") verschilt binnen een fase. Verschillende fases mogen wél een ander format/structuur/creator hebben.
 - Kies "format" bij voorkeur uit: Video UGC, Static, Motion graphic, Carousel.
 - Kies "structuur" bij voorkeur uit: GRWM, Probleem-oplossing, POV, Testimonial, Dag-in-het-leven, Benefit bullets.
+- "aanbod": het concrete product of de dienst die in dit concept centraal staat (bijv. "Longsleeve", "Belastingaangifte"). Leid dit af uit de intake/aanbod van de klant — verzin geen aanbod dat de klant niet heeft. Kort.
+- "awareness": de bewustwordingsfase van de doelgroep die bij deze invalshoek past (Onbewust / Probleembewust / Oplossingsbewust / Productbewust / Meest bewust). Sluit logisch aan op de funnelfase (Onbewust/Probleembewust ≈ TOFU, Oplossingsbewust ≈ MOFU, Product-/Meest bewust ≈ BOFU).
+- "hook": één concrete eerste-3-seconden-hook (visueel, auditief of tekstueel) die past bij de invalshoek — dat waarmee de kijker blijft kijken. Kort en specifiek.
+- "cta": passende call-to-action, kort (bijv. "Shop nu", "Meer informatie", "Boek een gesprek"). Houd 'm consistent per funnelfase/doel.
 - "creator_type": kort, en MOET passen bij het gekozen format en de beschikbare middelen. Video/authentieke content → bijv. "Micro-influencer" of "Klant/UGC". STATIC content is GEEN UGC: bij static beeld gebruik je termen als "Klantvisual", "Merk-eigen visual" of "Designer" — NOOIT "UGC" of "Klant/UGC" (dat impliceert video). Als onder "Sturing" alleen static-achtige middelen staan, kies dan uitsluitend static-passende creator-types.
 - "hypothese": concreet en toetsbaar (Wij verwachten dat ... omdat ...).
 - "prioriteit" (Hoog/Middel/Laag): als bij de invalshoek een "prioriteit" is meegegeven (uit de scorekaart), NEEM DIE EXACT OVER — dat is de door de strateeg goedgekeurde weging. Alleen als er géén prioriteit is meegegeven, weeg je zelf af op aansluiting bij pijnpunt/wens/kans, persona-bereik en funnelfase. Maak in de onderbouwing kort expliciet waarom deze prioriteit past.

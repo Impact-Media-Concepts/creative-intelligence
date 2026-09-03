@@ -23,6 +23,8 @@
 		TEST_VARIABELEN,
 		PRIORITEITEN,
 		CONCEPT_STATUSSEN,
+		AWARENESS_FASEN,
+		CTA_SUGGESTIES,
 		TESTVOLGORDE,
 		sorteerConcepten
 	} from '$lib/matrix';
@@ -545,6 +547,9 @@
 </datalist>
 <datalist id="dl-variabele">
 	{#each TEST_VARIABELEN as o (o)}<option value={o}></option>{/each}
+</datalist>
+<datalist id="dl-cta">
+	{#each CTA_SUGGESTIES as o (o)}<option value={o}></option>{/each}
 </datalist>
 
 <div class="space-y-5">
@@ -1121,17 +1126,21 @@
 			data-tour-title="De variabelenmatrix"
 			data-tour-text="Je concrete testconcepten. Sleep rijen (⠿) om de testvolgorde te bepalen; per rij zie je funnelfase, invalshoek, format, hypothese en prioriteit. Dit is de uitvoerlijst voor je sprints."
 		>
-			<table class="w-full min-w-[1180px] border-collapse text-sm">
+			<table class="w-full min-w-[1560px] border-collapse text-sm">
 				<thead>
 					<tr class="border-b bg-muted/50 text-left text-xs font-medium text-muted-foreground">
 						<th class="w-7 p-2"></th>
 						<th class="w-24 p-2">Funnelfase</th>
+						<th class="w-32 p-2">Awareness</th>
+						<th class="w-28 p-2">Aanbod</th>
 						<th class="w-56 p-2">Invalshoek</th>
 						<th class="w-32 p-2">Format</th>
 						<th class="w-40 p-2">Structuur</th>
 						<th class="w-32 p-2">Creator type</th>
+						<th class="w-44 p-2">Hook <span class="font-normal text-muted-foreground/70">(0–3s)</span></th>
 						<th class="w-64 p-2">Hypothese</th>
 						<th class="w-32 p-2">Test-variabele</th>
+						<th class="w-28 p-2">CTA</th>
 						<th class="w-28 p-2">Prioriteit</th>
 						<th class="w-32 p-2">Status</th>
 						<th class="w-20 p-2 text-right">Acties</th>
@@ -1164,12 +1173,16 @@
 								</button>
 							</td>
 							<td class="p-2">{@render selectCel(c, 'funnelfase', FUNNELFASES, true)}</td>
+							<td class="p-2">{@render selectCel(c, 'awareness', AWARENESS_FASEN, true)}</td>
+							<td class="p-2">{@render inputCel(c, 'aanbod', 'Bijv. Longsleeve')}</td>
 							<td class="p-2">{@render textareaCel(c, 'invalshoek', 'Invalshoek', 72)}</td>
 							<td class="p-2">{@render comboCel(c, 'format', 'dl-format')}</td>
 							<td class="p-2">{@render comboCel(c, 'structuur', 'dl-structuur')}</td>
 							<td class="p-2">{@render inputCel(c, 'creator_type', 'Bijv. micro-influencer')}</td>
+							<td class="p-2">{@render textareaCel(c, 'hook', 'Eerste 3 sec…', 72)}</td>
 							<td class="p-2">{@render textareaCel(c, 'hypothese', 'Wat verwacht je?', 96)}</td>
 							<td class="p-2">{@render comboCel(c, 'variabele', 'dl-variabele')}</td>
+							<td class="p-2">{@render comboCel(c, 'cta', 'dl-cta')}</td>
 							<td class="p-2">{@render selectCel(c, 'prioriteit', PRIORITEITEN, true)}</td>
 							<td class="p-2">{@render selectCel(c, 'status', CONCEPT_STATUSSEN, false)}</td>
 							<td class="p-2">
@@ -1211,7 +1224,7 @@
 						</tr>
 						{#if uitgeklapt.has(c.id) && c.onderbouwing}
 							<tr class="border-b bg-brand-mint/30">
-								<td colspan="11" class="px-3 py-2">
+								<td colspan="15" class="px-3 py-2">
 									<p class="text-sm">
 										<span class="font-semibold text-brand-green">Waarom dit concept:</span>
 										{c.onderbouwing}

@@ -21,11 +21,43 @@ export const STRUCTUREN = [
 	'Benefit bullets',
 	'Anders'
 ] as const;
-export const TEST_VARIABELEN = ['Invalshoek', 'Format', 'Structuur', 'Creator', 'Anders'] as const;
+// Welke variabele je test is vrij te kiezen — geen opgelegde volgorde meer.
+export const TEST_VARIABELEN = [
+	'Invalshoek',
+	'Aanbod',
+	'Format',
+	'Structuur',
+	'Creator',
+	'Hook',
+	'Anders'
+] as const;
 export const PRIORITEITEN: Prioriteit[] = ['Hoog', 'Middel', 'Laag'];
 export const CONCEPT_STATUSSEN: ConceptStatus[] = ['Idee', 'In productie', 'Live', 'Afgerond'];
 
-/** Vaste testvolgorde-indicator. */
+/** Bewustwordingsfasen (5 stages of awareness) — verfijning van de funnelfase. */
+export const AWARENESS_FASEN = [
+	'Onbewust',
+	'Probleembewust',
+	'Oplossingsbewust',
+	'Productbewust',
+	'Meest bewust'
+] as const;
+
+/** Veelgebruikte call-to-actions (vrije invoer blijft mogelijk). */
+export const CTA_SUGGESTIES = [
+	'Shop nu',
+	'Bekijk collectie',
+	'Meer informatie',
+	'Aanmelden',
+	'Download',
+	'Boek een gesprek'
+] as const;
+
+/**
+ * Aanbevolen testvolgorde (indicatief, niet verplicht): meestal test je eerst de
+ * invalshoek. Maar je bent vrij om met een andere as te beginnen — bijv. format/creator
+ * eerst als een shoot dat stuurt.
+ */
 export const TESTVOLGORDE = ['Invalshoek', 'Format', 'Structuur', 'Creator'] as const;
 
 const FUNNEL_ORDER: Record<string, number> = { TOFU: 0, MOFU: 1, BOFU: 2 };

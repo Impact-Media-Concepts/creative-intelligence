@@ -11,7 +11,7 @@ type ConceptInsert = Database['public']['Tables']['concepts']['Insert'];
 // AI-generatie met adaptive thinking duurt langer; ruimere Vercel-functietimeout.
 export const config = { maxDuration: 300 };
 
-const TEKST_VELDEN = ['invalshoek', 'format', 'structuur', 'creator_type', 'hypothese', 'variabele', 'onderbouwing'];
+const TEKST_VELDEN = ['invalshoek', 'aanbod', 'format', 'structuur', 'creator_type', 'hook', 'cta', 'awareness', 'hypothese', 'variabele', 'onderbouwing'];
 const FUNNEL = FUNNELFASES as string[];
 const PRIO = PRIORITEITEN as string[];
 const STATUS = CONCEPT_STATUSSEN as string[];
@@ -260,9 +260,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					client_id: clientId,
 					funnelfase: c.funnelfase,
 					invalshoek: c.invalshoek,
+					aanbod: c.aanbod ?? null,
 					format: c.format,
 					structuur: c.structuur,
 					creator_type: c.creator_type,
+					hook: c.hook ?? null,
+					cta: c.cta ?? null,
+					awareness: c.awareness ?? null,
 					hypothese: c.hypothese,
 					variabele: c.variabele,
 					prioriteit: c.prioriteit,
