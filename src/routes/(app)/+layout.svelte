@@ -25,6 +25,29 @@
 	);
 	let inKlant = $derived(!!huidigeKlant && pad.startsWith(`/klanten/${klantId}`));
 
+	// De loop-fasen als verticale stepper in de sidebar (vervangt de tabs bovenaan).
+	let loopFasen = $derived(
+		klantId
+			? (
+					[
+						['Overzicht', ''],
+						['Intake', '/intake'],
+						['Trigger Map', '/triggermap'],
+						['Testruimte', '/testruimte'],
+						['Matrix', '/matrix'],
+						['Brief', '/brief'],
+						['Productie', '/productie'],
+						['Sprint', '/sprint'],
+						['Learnings', '/learnings']
+					] as const
+				).map(([label, sub]) => ({ label, href: `/klanten/${klantId}${sub}` }))
+			: []
+	);
+	function faseActief(href: string): boolean {
+		const b = `/klanten/${klantId}`;
+		return href === b ? pad === b : pad.startsWith(href);
+	}
+
 	// ---- Rondleiding: auto-start voor nieuwe gebruikers (1×), altijd te heropenen ----
 	// De tour loopt de fasen van een klant langs; gebruik de huidige klant of anders de eerste.
 	let tourBase = $derived(
@@ -111,6 +134,28 @@
 						{huidigeKlant.naam}
 					</span>
 				</div>
+
+				<!-- De loop -->
+				<span class="mt-4 px-2 pb-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+					De loop
+				</span>
+				<nav class="flex flex-col gap-0.5 overflow-y-auto">
+					{#each loopFasen as f, i (f.href)}
+						<a href={f.href} class={navClass(faseActief(f.href))}>
+							<span
+								class={cn(
+									'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+									faseActief(f.href)
+										? 'bg-brand-lime text-brand-green'
+										: 'bg-sidebar-accent/60 text-sidebar-foreground/70'
+								)}
+							>
+								{i + 1}
+							</span>
+							{f.label}
+						</a>
+					{/each}
+				</nav>
 			</div>
 		{:else}
 			<!-- Hoofdnavigatie -->
