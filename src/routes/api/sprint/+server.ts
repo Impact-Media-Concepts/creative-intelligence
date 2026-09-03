@@ -66,6 +66,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			const id = String(body.id ?? '');
 			if (!id) error(400, 'Ontbrekend id');
 			const waarde = !!body.waarde;
+			// Vorige status ophalen → loop-geheugen alleen bij de échte overgang bijwerken.
+			const { data: vorig } = await supabase
+				.from('concepts')
+				.select('is_winnaar')
+				.eq('id', id)
+				.maybeSingle();
+			const wasWinnaar = !!vorig?.is_winnaar;
+
 			const { data: concept, error: dbFout } = await supabase
 				.from('concepts')
 				.update({ is_winnaar: waarde })
@@ -74,8 +82,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				.single();
 			if (dbFout || !concept) error(500, dbFout?.message ?? 'Opslaan mislukt');
 
-			// Loop-geheugen: een bevestigde winnaar wordt automatisch als learning onthouden.
-			if (waarde) {
+			// Loop-geheugen: alleen toevoegen bij de overgang naar winnaar (niet bij her-markeren).
+			if (waarde && !wasWinnaar) {
 				const { data: cl } = await supabase
 					.from('clients')
 					.select('loop_geheugen')

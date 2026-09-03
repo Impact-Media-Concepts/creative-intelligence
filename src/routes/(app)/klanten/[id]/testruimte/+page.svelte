@@ -208,7 +208,11 @@
 
 <div class="space-y-5">
 	<div class="flex flex-wrap items-start justify-between gap-3">
-		<div>
+		<div
+			data-tour-order="1"
+			data-tour-title="Testruimte"
+			data-tour-text="Kies hier wat je deze ronde test: aanbod × invalshoek × format × creator. De teller rechts rekent live mee en houdt je bij een gefocuste set — kies je bij meerdere dimensies meerdere opties, dan test je die assen tegelijk."
+		>
 			<h2 class="text-lg font-semibold">Testruimte</h2>
 			<p class="max-w-2xl text-sm text-muted-foreground">
 				Kies wat je deze ronde test. De tool rekent live mee en houdt je bij een gefocuste, testbare
@@ -340,7 +344,12 @@
 			</Card.Root>
 
 			<!-- Teller + focus -->
-			<div class="space-y-4 lg:sticky lg:top-4 lg:self-start">
+			<div
+				class="space-y-4 lg:sticky lg:top-4 lg:self-start"
+				data-tour-order="2"
+				data-tour-title="Teller, horizon & focus"
+				data-tour-text="Zie hoeveel lijnen je maakt, hoe ver vooruit je produceert (horizon) en welke lijnen de tool op RICE als startset aanraadt. Klik 'Genereer aanbevolen focus' om ze als concepten in de matrix te zetten."
+			>
 				<Card.Root>
 					<Card.Content class="space-y-2 p-4">
 						<span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Te produceren lijnen</span>

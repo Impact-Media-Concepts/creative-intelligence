@@ -74,7 +74,11 @@
 
 <div class="space-y-5">
 	<div class="flex flex-wrap items-start justify-between gap-3">
-		<div>
+		<div
+			data-tour-order="1"
+			data-tour-title="Productie"
+			data-tour-text="De brug naar de shoot: per concept een 5-beats script (Hook → Probleem → Oplossing → Resultaat → CTA), een referentielink en de props. Klik 'Genereer script' om de AI het script te laten schrijven."
+		>
 			<h2 class="text-lg font-semibold">Productie</h2>
 			<p class="max-w-2xl text-sm text-muted-foreground">
 				De brug tussen matrix en shoot: per concept een concreet 5-beats script, een referentie en

@@ -94,9 +94,9 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 					};
 	} else if (actieveConcepten.length === 0) {
 		volgendeStap = {
-			label: 'Genereer de matrix-opzet',
-			hint: 'Zet de test-backlog om in concrete concepten om te testen.',
-			tab: 'matrix'
+			label: 'Stel je testset samen in de Testruimte',
+			hint: 'Kies de combinaties (aanbod × invalshoek × format × creator) die je deze ronde wil testen — de tool houdt je gefocust.',
+			tab: 'testruimte'
 		};
 	} else if (getest === 0) {
 		volgendeStap = {
