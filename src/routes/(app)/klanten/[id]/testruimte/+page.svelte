@@ -51,6 +51,7 @@
 	let nieuwStructuur = $state('');
 	let nieuwAngle = $state('');
 	let bezig = $state(false);
+	let bezigAI = $state(false);
 	let fout = $state<string | null>(null);
 	let resultAantal = $state<number | null>(null);
 
@@ -188,6 +189,25 @@
 			fout = e instanceof Error ? e.message : 'Genereren mislukt';
 		} finally {
 			bezig = false;
+		}
+	}
+
+	// Alternatief: laat de AI een curated set voorstellen (mét hypothese/onderbouwing).
+	async function aiVoorstel() {
+		bezigAI = true;
+		fout = null;
+		resultAantal = null;
+		try {
+			const { concepten } = await postJSON<{ concepten: unknown[] }>(
+				'/api/concepts',
+				{ type: 'genereer', clientId, richtlijnen: '', config: {} },
+				{ taak: 'AI-voorstel matrix' }
+			);
+			resultAantal = concepten.length;
+		} catch (e) {
+			fout = e instanceof Error ? e.message : 'AI-voorstel mislukt';
+		} finally {
+			bezigAI = false;
 		}
 	}
 
@@ -424,6 +444,15 @@
 						<Button variant="outline" class="w-full" disabled={bezig} onclick={() => genereer(true)}>Genereer hele selectie ({combos.length})</Button>
 					{/if}
 					<p class="text-center text-xs text-muted-foreground">Zet de gekozen combinaties als concepten in de matrix (dimensies ingevuld; hooks/hypothese vul je daar of via de brief aan).</p>
+
+					<div class="flex items-center gap-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+						<span class="h-px flex-1 bg-border"></span>of<span class="h-px flex-1 bg-border"></span>
+					</div>
+					<Button variant="outline" class="w-full" disabled={bezigAI || !data.heeftTriggerMap} onclick={aiVoorstel}>
+						{#if bezigAI}<LoaderCircle class="size-4 animate-spin" />{:else}<Sparkles class="size-4" />{/if}
+						Laat de AI een set voorstellen
+					</Button>
+					<p class="text-center text-xs text-muted-foreground">De AI stelt zelf een curated set op (mét hypothese &amp; onderbouwing) uit je trigger map.</p>
 				</div>
 			</div>
 		</div>
