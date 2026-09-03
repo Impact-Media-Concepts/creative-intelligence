@@ -322,6 +322,9 @@ export interface Database {
 					observatie: string | null;
 					ai_analyse: Json | null;
 					brief: Json | null;
+					script: Json | null;
+					referentie: string | null;
+					props: string | null;
 					is_winnaar: boolean;
 					meta_ad_external_id: string | null;
 					meta_auto_sync: boolean;
@@ -358,6 +361,9 @@ export interface Database {
 					observatie?: string | null;
 					ai_analyse?: Json | null;
 					brief?: Json | null;
+					script?: Json | null;
+					referentie?: string | null;
+					props?: string | null;
 					is_winnaar?: boolean;
 					meta_ad_external_id?: string | null;
 					meta_auto_sync?: boolean;
@@ -394,6 +400,9 @@ export interface Database {
 					observatie?: string | null;
 					ai_analyse?: Json | null;
 					brief?: Json | null;
+					script?: Json | null;
+					referentie?: string | null;
+					props?: string | null;
 					is_winnaar?: boolean;
 					meta_ad_external_id?: string | null;
 					meta_auto_sync?: boolean;

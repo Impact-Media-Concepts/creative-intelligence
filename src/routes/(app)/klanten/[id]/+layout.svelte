@@ -20,6 +20,7 @@
 		{ label: 'Testruimte', href: `${base}/testruimte` },
 		{ label: 'Matrix', href: `${base}/matrix` },
 		{ label: 'Brief', href: `${base}/brief` },
+		{ label: 'Productie', href: `${base}/productie` },
 		{ label: 'Sprint', href: `${base}/sprint` },
 		{ label: 'Learnings', href: `${base}/learnings` }
 	]);

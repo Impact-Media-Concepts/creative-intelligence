@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import type { Database } from '$lib/supabase/database.types';
 import { FUNNELFASES, PRIORITEITEN, CONCEPT_STATUSSEN } from '$lib/matrix';
 import { genereerMatrix } from '$lib/server/matrix-ai';
+import { genereerScript } from '$lib/server/productie-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 import { afgeleidePrioriteit, type InvalshoekScore } from '$lib/trigger-map';
 
@@ -11,7 +12,19 @@ type ConceptInsert = Database['public']['Tables']['concepts']['Insert'];
 // AI-generatie met adaptive thinking duurt langer; ruimere Vercel-functietimeout.
 export const config = { maxDuration: 300 };
 
-const TEKST_VELDEN = ['invalshoek', 'aanbod', 'format', 'structuur', 'creator_type', 'hook', 'cta', 'awareness', 'hypothese', 'variabele', 'onderbouwing'];
+const TEKST_VELDEN = ['invalshoek', 'aanbod', 'format', 'structuur', 'creator_type', 'hook', 'cta', 'awareness', 'hypothese', 'variabele', 'onderbouwing', 'referentie', 'props'];
+
+const SCRIPT_KEYS = ['hook', 'probleem', 'oplossing', 'resultaat', 'cta'] as const;
+function schoonScript(v: unknown): Record<string, string> {
+	const uit: Record<string, string> = {};
+	if (v && typeof v === 'object') {
+		for (const k of SCRIPT_KEYS) {
+			const val = (v as Record<string, unknown>)[k];
+			uit[k] = val == null ? '' : String(val);
+		}
+	}
+	return uit;
+}
 const FUNNEL = FUNNELFASES as string[];
 const PRIO = PRIORITEITEN as string[];
 const STATUS = CONCEPT_STATUSSEN as string[];
@@ -336,6 +349,69 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				await supabase.from('clients').update({ huidige_fase: 'matrix' }).eq('id', clientId);
 			}
 			return json({ concepten: data, aantal: data.length });
+		}
+
+		// Productie: 5-beats script handmatig opslaan.
+		case 'script_save': {
+			const id = String(body.id ?? '');
+			if (!id) error(400, 'Ontbrekend id');
+			const { error: dbFout } = await supabase
+				.from('concepts')
+				.update({ script: schoonScript(body.script) as never })
+				.eq('id', id);
+			if (dbFout) error(500, dbFout.message);
+			return json({ ok: true });
+		}
+
+		// Productie: 5-beats script laten genereren door de AI.
+		case 'script_gen': {
+			const id = String(body.id ?? '');
+			if (!id) error(400, 'Ontbrekend id');
+			const { data: concept } = await supabase.from('concepts').select('*').eq('id', id).single();
+			if (!concept) error(404, 'Concept niet gevonden');
+
+			const { data: tm } = await supabase
+				.from('trigger_map_versions')
+				.select('pijnpunten, wensen, bezwaren, taal_doelgroep')
+				.eq('client_id', concept.client_id)
+				.eq('is_actief', true)
+				.maybeSingle();
+
+			try {
+				const res = await genereerScript(concept, {
+					pijnpunten: (tm?.pijnpunten as string[]) ?? [],
+					wensen: (tm?.wensen as string[]) ?? [],
+					bezwaren: (tm?.bezwaren as string[]) ?? [],
+					taal_doelgroep: (tm?.taal_doelgroep as string[]) ?? []
+				});
+				await supabase
+					.from('concepts')
+					.update({ script: res.data as never })
+					.eq('id', id);
+				await supabase.from('ai_logs').insert({
+					client_id: concept.client_id,
+					gebruiker_id: user.id,
+					module: 'script',
+					model: res.model,
+					prompt: res.prompt,
+					response: res.response,
+					tokens_input: res.tokensInput,
+					tokens_output: res.tokensOutput,
+					duur_ms: res.duurMs
+				});
+				return json({ script: res.data });
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : 'onbekende fout';
+				await supabase.from('ai_logs').insert({
+					client_id: concept.client_id,
+					gebruiker_id: user.id,
+					module: 'script',
+					model: CLAUDE_MODEL,
+					response: 'FOUT: ' + msg
+				});
+				error(500, 'Script genereren mislukt: ' + msg);
+			}
+			break;
 		}
 
 		default:
