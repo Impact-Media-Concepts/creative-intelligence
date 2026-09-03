@@ -6,7 +6,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { postJSON } from '$lib/saver.svelte';
-	import { FORMATS, STRUCTUREN, TEST_VARIABELEN, CTA_SUGGESTIES } from '$lib/matrix';
+	import { FORMATS, STRUCTUREN, CTA_SUGGESTIES } from '$lib/matrix';
 	import { riceScore, afgeleidePrioriteit, type Invalshoek } from '$lib/trigger-map';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -34,11 +34,10 @@
 	let selAanbod = $state<string[]>([]);
 	let selAngle = $state<string[]>([]); // namen
 	let selFormat = $state<string[]>([]);
+	let selStructuur = $state<string[]>([]);
 	let selCreator = $state<string[]>([]);
 
-	let structuur = $state('');
 	let cta = $state('');
-	let testas = $state<string>('Invalshoek');
 	let hooks = $state(3);
 	let horizon = $state(12);
 
@@ -56,19 +55,40 @@
 		return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 	}
 
-	const lines = $derived(selAanbod.length * selAngle.length * selFormat.length * selCreator.length);
+	// Structuur is optioneel: 0 gekozen = niet variëren (×1); 1+ = telt mee als multiplier.
+	const lines = $derived(
+		selAanbod.length *
+			selAngle.length *
+			selFormat.length *
+			Math.max(1, selStructuur.length) *
+			selCreator.length
+	);
 	const hooksN = $derived(Math.max(1, Math.min(10, hooks || 1)));
 
-	interface Combo { aanbod: string; angle: string; format: string; creator: string; funnelfase: string; score: number; }
+	// Testassen worden afgeleid: elke dimensie waar je >1 optie kiest, test je deze ronde.
+	const testAssen = $derived(
+		[
+			selAngle.length > 1 && 'Invalshoek',
+			selFormat.length > 1 && 'Format',
+			selStructuur.length > 1 && 'Structuur',
+			selCreator.length > 1 && 'Creator',
+			selAanbod.length > 1 && 'Aanbod'
+		].filter(Boolean) as string[]
+	);
+	const primaireAs = $derived(testAssen[0] ?? 'Invalshoek');
+
+	interface Combo { aanbod: string; angle: string; format: string; structuur: string | null; creator: string; funnelfase: string; score: number; }
 	const combos = $derived.by<Combo[]>(() => {
 		const out: Combo[] = [];
+		const structs = selStructuur.length ? selStructuur : [null];
 		for (const a of selAanbod)
 			for (const g of selAngle) {
 				const inv = angleByName(g);
 				const sc = inv?.score ? riceScore(inv.score) : 5;
 				for (const f of selFormat)
-					for (const cr of selCreator)
-						out.push({ aanbod: a, angle: g, format: f, creator: cr, funnelfase: inv?.funnelfase ?? 'TOFU', score: sc });
+					for (const st of structs)
+						for (const cr of selCreator)
+							out.push({ aanbod: a, angle: g, format: f, structuur: st, creator: cr, funnelfase: inv?.funnelfase ?? 'TOFU', score: sc });
 			}
 		return out.sort((x, y) => y.score - x.score);
 	});
@@ -119,9 +139,9 @@
 					aanbod: c.aanbod,
 					format: c.format,
 					creator_type: c.creator,
-					structuur: structuur || null,
+					structuur: c.structuur,
 					cta: cta || null,
-					variabele: testas,
+					variabele: primaireAs,
 					prioriteit: inv?.score ? afgeleidePrioriteit(inv.score) : null,
 					onderbouwing: inv?.score?.toelichting ?? inv?.onderbouwing ?? null
 				};
@@ -160,7 +180,8 @@
 			<h2 class="text-lg font-semibold">Testruimte</h2>
 			<p class="max-w-2xl text-sm text-muted-foreground">
 				Kies wat je deze ronde test. De tool rekent live mee en houdt je bij een gefocuste, testbare
-				set — geen berg van honderd video's. Jij bepaalt zelf welke as je test.
+				set — geen berg van honderd video's. Kies je bij meerdere dimensies meerdere opties, dan test
+				je die assen tegelijk (handig als je een kwartaal vooruit shoot).
 			</p>
 		</div>
 	</div>
@@ -230,6 +251,21 @@
 						</div>
 					</div>
 
+					<!-- Structuur -->
+					<div class="space-y-2 p-4">
+						<div class="flex items-center gap-2">
+							<span class="font-medium">Structuur</span>
+							<span class="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">productie</span>
+							<span class="ml-auto text-xs text-muted-foreground">{selStructuur.length} gekozen</span>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							{#each STRUCTUREN as o (o)}
+								<button type="button" class={chipCls(selStructuur.includes(o))} onclick={() => (selStructuur = toggle(selStructuur, o))}>{o}</button>
+							{/each}
+						</div>
+						<p class="text-xs text-muted-foreground">Optioneel: laat leeg = niet variëren; kies er meerdere om óók de structuur te testen.</p>
+					</div>
+
 					<!-- Creator -->
 					<div class="space-y-2 p-4">
 						<div class="flex items-center gap-2">
@@ -248,26 +284,13 @@
 						</div>
 					</div>
 
-					<!-- Vaste keuzes + hook -->
+					<!-- CTA + hooks (vaste instellingen) -->
 					<div class="grid gap-4 p-4 sm:grid-cols-2">
-						<label class="space-y-1 text-sm">
-							<span class="block text-xs font-medium text-muted-foreground">Structuur (toegepast op alle)</span>
-							<select bind:value={structuur} class={cn(veld, 'w-full')}>
-								<option value="">—</option>
-								{#each STRUCTUREN as o (o)}<option value={o}>{o}</option>{/each}
-							</select>
-						</label>
 						<label class="space-y-1 text-sm">
 							<span class="block text-xs font-medium text-muted-foreground">CTA (vast)</span>
 							<select bind:value={cta} class={cn(veld, 'w-full')}>
 								<option value="">—</option>
 								{#each CTA_SUGGESTIES as o (o)}<option value={o}>{o}</option>{/each}
-							</select>
-						</label>
-						<label class="space-y-1 text-sm">
-							<span class="block text-xs font-medium text-muted-foreground">Wat test je deze ronde? (testas)</span>
-							<select bind:value={testas} class={cn(veld, 'w-full')}>
-								{#each TEST_VARIABELEN as o (o)}<option value={o}>{o}</option>{/each}
 							</select>
 						</label>
 						<label class="space-y-1 text-sm">
@@ -285,13 +308,18 @@
 						<span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Te produceren lijnen</span>
 						<div class="text-4xl font-bold tabular-nums">{lines} <span class="text-base font-medium text-muted-foreground">lijnen</span></div>
 						{#if lines > 0}
-							<p class="text-xs tabular-nums text-muted-foreground">{selAanbod.length} aanbod × {selAngle.length} angle × {selFormat.length} format × {selCreator.length} creator</p>
+							<p class="text-xs tabular-nums text-muted-foreground">{selAanbod.length} aanbod × {selAngle.length} angle × {selFormat.length} format{#if selStructuur.length} × {selStructuur.length} structuur{/if} × {selCreator.length} creator</p>
 						{/if}
 						<div class="h-2 overflow-hidden rounded-full bg-muted">
 							<div class="h-full rounded-full transition-all" style="width:{Math.min(100, (horizon ? lines / horizon : 0) * 100)}%; background:{lines === 0 ? 'transparent' : lines <= horizon ? '#2f7d46' : lines <= horizon * 1.5 ? '#dd9a2e' : '#d1573c'}"></div>
 						</div>
 						<p class={cn('text-sm font-medium', verdict.cls)}>{verdict.msg}</p>
 						<p class="tabular-nums text-xs text-muted-foreground">→ <strong>{lines * hooksN} test-varianten</strong> incl. hooks</p>
+						{#if lines > 0}
+							<p class="text-xs text-muted-foreground">
+								Je test deze ronde: <strong>{testAssen.length ? testAssen.join(', ') : 'geen variabele (één vaste combinatie)'}</strong>
+							</p>
+						{/if}
 
 						<div class="space-y-1.5 pt-2">
 							<span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Hoe ver vooruit?</span>
@@ -316,7 +344,7 @@
 									<li class="flex items-center gap-2 border-b border-dashed py-1.5 last:border-0">
 										<span class="flex size-5 shrink-0 items-center justify-center rounded bg-brand-green text-[11px] font-semibold text-white">{i + 1}</span>
 										<span class="min-w-0 text-xs leading-tight">
-											<span class="font-medium">{c.angle} · {c.format}</span><br />
+											<span class="font-medium">{c.angle} · {c.format}{#if c.structuur} · {c.structuur}{/if}</span><br />
 											<span class="text-muted-foreground">{c.aanbod} · {c.creator}</span>
 										</span>
 										<span class="ml-auto shrink-0 rounded bg-brand-mint px-1.5 py-0.5 text-[11px] font-semibold text-brand-green">{c.score}</span>
