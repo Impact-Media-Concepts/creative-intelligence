@@ -17,6 +17,7 @@
 		{ label: 'Overzicht', href: base },
 		{ label: 'Intake', href: `${base}/intake` },
 		{ label: 'Trigger Map', href: `${base}/triggermap` },
+		{ label: 'Testruimte', href: `${base}/testruimte` },
 		{ label: 'Matrix', href: `${base}/matrix` },
 		{ label: 'Brief', href: `${base}/brief` },
 		{ label: 'Sprint', href: `${base}/sprint` },

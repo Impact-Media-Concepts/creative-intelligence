@@ -299,6 +299,45 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			break;
 		}
 
+		// Bulk: een in de Testruimte gekozen set combinaties als concepten wegschrijven.
+		case 'genereer_set': {
+			const clientId = String(body.clientId ?? '');
+			if (!clientId) error(400, 'Ontbrekende klant');
+			const lijnen = Array.isArray(body.lijnen) ? body.lijnen : [];
+			if (!lijnen.length) error(400, 'Geen combinaties geselecteerd');
+
+			const s = (v: unknown) => (v == null || v === '' ? null : String(v));
+			const rijen: ConceptInsert[] = lijnen.slice(0, 200).map((l: Record<string, unknown>) => ({
+				client_id: clientId,
+				funnelfase: FUNNEL.includes(l.funnelfase as string) ? (l.funnelfase as never) : null,
+				awareness: s(l.awareness),
+				aanbod: s(l.aanbod),
+				invalshoek: s(l.invalshoek),
+				format: s(l.format),
+				structuur: s(l.structuur),
+				creator_type: s(l.creator_type),
+				hook: s(l.hook),
+				cta: s(l.cta),
+				variabele: s(l.variabele),
+				prioriteit: PRIO.includes(l.prioriteit as string) ? (l.prioriteit as never) : null,
+				onderbouwing: s(l.onderbouwing),
+				status: 'Idee'
+			}));
+
+			const { data, error: dbFout } = await supabase.from('concepts').insert(rijen).select('*');
+			if (dbFout || !data) error(500, dbFout?.message ?? 'Aanmaken mislukt');
+
+			const { data: client } = await supabase
+				.from('clients')
+				.select('huidige_fase')
+				.eq('id', clientId)
+				.single();
+			if (client && ['intake', 'trigger_map'].includes(client.huidige_fase)) {
+				await supabase.from('clients').update({ huidige_fase: 'matrix' }).eq('id', clientId);
+			}
+			return json({ concepten: data, aantal: data.length });
+		}
+
 		default:
 			error(400, 'Onbekend type');
 	}
