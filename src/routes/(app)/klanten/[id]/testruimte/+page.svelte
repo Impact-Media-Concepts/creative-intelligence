@@ -30,6 +30,9 @@
 	// svelte-ignore state_referenced_locally
 	let aanbodOpts = $state<string[]>([...data.aanbodOpties]);
 	let creatorOpts = $state<string[]>([...CREATORS_DEFAULT]);
+	// "Anders" vervangen door vrij typen: presets zonder 'Anders', eigen waarden erbij.
+	let formatOpts = $state<string[]>(FORMATS.filter((f) => f !== 'Anders'));
+	let structuurOpts = $state<string[]>(STRUCTUREN.filter((s) => s !== 'Anders'));
 
 	let selAanbod = $state<string[]>([]);
 	let selAngle = $state<string[]>([]); // namen
@@ -43,6 +46,8 @@
 
 	let nieuwAanbod = $state('');
 	let nieuwCreator = $state('');
+	let nieuwFormat = $state('');
+	let nieuwStructuur = $state('');
 	let bezig = $state(false);
 	let fout = $state<string | null>(null);
 	let resultAantal = $state<number | null>(null);
@@ -117,6 +122,24 @@
 		if (!selCreator.includes(v)) selCreator = [...selCreator, v];
 		nieuwCreator = '';
 	}
+	function voegFormatToe() {
+		const v = nieuwFormat.trim();
+		if (!v) return;
+		if (!formatOpts.includes(v)) formatOpts.push(v);
+		if (!selFormat.includes(v)) selFormat = [...selFormat, v];
+		nieuwFormat = '';
+	}
+	function voegStructuurToe() {
+		const v = nieuwStructuur.trim();
+		if (!v) return;
+		if (!structuurOpts.includes(v)) structuurOpts.push(v);
+		if (!selStructuur.includes(v)) selStructuur = [...selStructuur, v];
+		nieuwStructuur = '';
+	}
+
+	// Compacte "pil" om een eigen optie te typen (Format/Structuur).
+	const pil =
+		'h-7 w-40 rounded-full border border-dashed border-input bg-background px-3 text-xs focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none';
 
 	// Bewustwordingsfase afgeleid van de funnelfase (indicatief).
 	function awarenessVoor(f: string): string {
@@ -244,10 +267,11 @@
 							<span class="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">productie</span>
 							<span class="ml-auto text-xs text-muted-foreground">{selFormat.length} gekozen</span>
 						</div>
-						<div class="flex flex-wrap gap-2">
-							{#each FORMATS as o (o)}
+						<div class="flex flex-wrap items-center gap-2">
+							{#each formatOpts as o (o)}
 								<button type="button" class={chipCls(selFormat.includes(o))} onclick={() => (selFormat = toggle(selFormat, o))}>{o}</button>
 							{/each}
+							<input bind:value={nieuwFormat} onkeydown={(e) => e.key === 'Enter' && voegFormatToe()} placeholder="+ eigen…" class={pil} />
 						</div>
 					</div>
 
@@ -258,10 +282,11 @@
 							<span class="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">productie</span>
 							<span class="ml-auto text-xs text-muted-foreground">{selStructuur.length} gekozen</span>
 						</div>
-						<div class="flex flex-wrap gap-2">
-							{#each STRUCTUREN as o (o)}
+						<div class="flex flex-wrap items-center gap-2">
+							{#each structuurOpts as o (o)}
 								<button type="button" class={chipCls(selStructuur.includes(o))} onclick={() => (selStructuur = toggle(selStructuur, o))}>{o}</button>
 							{/each}
+							<input bind:value={nieuwStructuur} onkeydown={(e) => e.key === 'Enter' && voegStructuurToe()} placeholder="+ eigen…" class={pil} />
 						</div>
 						<p class="text-xs text-muted-foreground">Optioneel: laat leeg = niet variëren; kies er meerdere om óók de structuur te testen.</p>
 					</div>
