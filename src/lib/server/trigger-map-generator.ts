@@ -30,7 +30,8 @@ Richtlijnen:
 - Routines: 3-5 items
 - Kansen vs concurrenten: 3-5 concrete gaps die je ziet
 - Persona's: 2-4 duidelijk onderscheidende doelgroep-segmenten uit de data (bijv. verschillende koopmotieven of levensfases). Geen verzonnen segmenten.
-- Invalshoeken: exact 3 per funnelfase (3× TOFU, 3× MOFU, 3× BOFU = 9 in totaal). Binnen elke fase gesorteerd op kans. Elke invalshoek is een concrete, testbare hoek — geen herhaling van dezelfde hoek in meerdere fases.
+- Invalshoeken: 2-4 per funnelfase — maar ALLEEN écht onderscheidende, kansrijke hoeken. Liever 2 sterke dan 3 waarvan er één zwak is of eigenlijk een tactiek. Binnen elke fase gesorteerd op kans; geen herhaling van dezelfde hoek in meerdere fases.
+- KWALITEIT VAN EEN INVALSHOEK (belangrijk): een invalshoek is de BOODSCHAP / het inzicht dat de doelgroep raakt — NIET het advertentie-mechanisme, format of de CTA. NOOIT als invalshoek opvoeren: ad-tactieken/mechanieken (retargeting, dynamische/DCA-ads, catalogus-ads, "urgentie", "voorraad-urgentie", "garantie-CTA"), een format (carousel/UGC/video/"contentserie") of een losse call-to-action. Ook een BOFU-hoek is een concreet inzicht/boodschap (bv. een specifiek bezwaar omgedraaid), geen tactiek. Maak hoeken specifiek en scroll-stoppend, geworteld in een concreet pijnpunt/wens/bezwaar en waar mogelijk in de LETTERLIJKE taal van de doelgroep — vermijd brave, generieke categorielabels.
 - FUNNEL-PLAATSING (belangrijk — plaats elke invalshoek in de JUISTE fase):
     • TOFU (awareness): brede herkenning, pijnpunt/emotie, nieuwsgierigheid, het probleem of verlangen zelf. Nog GEEN merk-USP's, bewijs of aanbod.
     • MOFU (overweging): USP's, uitleg, vergelijking met alternatieven/concurrenten, SOCIAL PROOF (reviews/beoordelingen/cijfers), twijfels wegnemen.
