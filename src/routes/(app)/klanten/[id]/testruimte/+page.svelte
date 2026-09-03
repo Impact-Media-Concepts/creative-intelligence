@@ -44,10 +44,12 @@
 	let hooks = $state(3);
 	let horizon = $state(12);
 
+	let extraAngles = $state<string[]>([]); // eigen invalshoeken (naast de trigger map)
 	let nieuwAanbod = $state('');
 	let nieuwCreator = $state('');
 	let nieuwFormat = $state('');
 	let nieuwStructuur = $state('');
+	let nieuwAngle = $state('');
 	let bezig = $state(false);
 	let fout = $state<string | null>(null);
 	let resultAantal = $state<number | null>(null);
@@ -135,6 +137,13 @@
 		if (!structuurOpts.includes(v)) structuurOpts.push(v);
 		if (!selStructuur.includes(v)) selStructuur = [...selStructuur, v];
 		nieuwStructuur = '';
+	}
+	function voegAngleToe() {
+		const v = nieuwAngle.trim();
+		if (!v) return;
+		if (!extraAngles.includes(v) && !angles.some((a) => a.naam === v)) extraAngles.push(v);
+		if (!selAngle.includes(v)) selAngle = [...selAngle, v];
+		nieuwAngle = '';
 	}
 
 	// Compacte "pil" om een eigen optie te typen (Format/Structuur).
@@ -249,13 +258,17 @@
 							<span class="rounded bg-brand-mint px-1.5 py-0.5 text-[11px] font-medium text-brand-green">strategisch</span>
 							<span class="ml-auto text-xs text-muted-foreground">{selAngle.length} gekozen</span>
 						</div>
-						<div class="flex flex-wrap gap-2">
+						<div class="flex flex-wrap items-center gap-2">
 							{#each angles as a (a.naam)}
 								<button type="button" class={chipCls(selAngle.includes(a.naam))} onclick={() => (selAngle = toggle(selAngle, a.naam))}>
 									<span class={cn('mr-1 text-[10px] font-semibold', funnelKleur[a.funnelfase])}>{a.funnelfase}</span>
 									{a.naam || '(naamloos)'}
 								</button>
 							{/each}
+							{#each extraAngles as naam (naam)}
+								<button type="button" class={chipCls(selAngle.includes(naam))} onclick={() => (selAngle = toggle(selAngle, naam))}>{naam}</button>
+							{/each}
+							<input bind:value={nieuwAngle} onkeydown={(e) => e.key === 'Enter' && voegAngleToe()} placeholder="+ eigen…" class={pil} />
 						</div>
 						<p class="text-xs text-muted-foreground">De trigger per persona — uit je trigger map.</p>
 					</div>
