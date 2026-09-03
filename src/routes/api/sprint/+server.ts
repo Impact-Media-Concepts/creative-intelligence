@@ -70,9 +70,29 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				.from('concepts')
 				.update({ is_winnaar: waarde })
 				.eq('id', id)
-				.select('client_id, invalshoek')
+				.select('client_id, invalshoek, format, ai_analyse')
 				.single();
 			if (dbFout || !concept) error(500, dbFout?.message ?? 'Opslaan mislukt');
+
+			// Loop-geheugen: een bevestigde winnaar wordt automatisch als learning onthouden.
+			if (waarde) {
+				const { data: cl } = await supabase
+					.from('clients')
+					.select('loop_geheugen')
+					.eq('id', concept.client_id)
+					.single();
+				const analyse = (concept.ai_analyse as { wat_werkte?: string } | null) ?? null;
+				const datum = new Date().toISOString().slice(0, 10);
+				const regel =
+					`[${datum}] Winnaar: ${concept.invalshoek ?? '(invalshoek)'}` +
+					(concept.format ? ` (${concept.format})` : '') +
+					(analyse?.wat_werkte ? ` — ${analyse.wat_werkte}` : '');
+				const bestaand = cl?.loop_geheugen ? cl.loop_geheugen.trimEnd() + '\n' : '';
+				await supabase
+					.from('clients')
+					.update({ loop_geheugen: bestaand + regel })
+					.eq('id', concept.client_id);
+			}
 
 			// Loop sluiten: een bevestigde winnaar markeert de bijbehorende invalshoek in de
 			// actieve trigger map als "Getest — werkt", zodat de backlog meebeweegt met de resultaten.

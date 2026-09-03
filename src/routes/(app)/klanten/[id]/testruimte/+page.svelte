@@ -98,6 +98,11 @@
 		nieuwCreator = '';
 	}
 
+	// Bewustwordingsfase afgeleid van de funnelfase (indicatief).
+	function awarenessVoor(f: string): string {
+		return f === 'BOFU' ? 'Productbewust' : f === 'MOFU' ? 'Oplossingsbewust' : 'Probleembewust';
+	}
+
 	async function genereer(alle: boolean) {
 		const bron = alle ? combos : focus;
 		if (!bron.length) return;
@@ -109,6 +114,7 @@
 				const inv = angleByName(c.angle);
 				return {
 					funnelfase: c.funnelfase,
+					awareness: awarenessVoor(c.funnelfase),
 					invalshoek: c.angle,
 					aanbod: c.aanbod,
 					format: c.format,

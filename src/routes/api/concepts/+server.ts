@@ -163,7 +163,23 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			const clientId = String(body.clientId ?? '');
 			if (!clientId) error(400, 'Ontbrekende klant');
 
-			const richtlijnen = body.richtlijnen == null ? '' : String(body.richtlijnen);
+			const richtlijnenIn = body.richtlijnen == null ? '' : String(body.richtlijnen);
+
+			// Loop-geheugen automatisch meewegen (self-learning): eerdere besluiten/learnings.
+			const { data: clientGeheugen } = await supabase
+				.from('clients')
+				.select('loop_geheugen')
+				.eq('id', clientId)
+				.single();
+			const geheugen = clientGeheugen?.loop_geheugen?.trim();
+			const richtlijnen = [
+				geheugen
+					? `Loop-geheugen van deze klant (eerdere besluiten en learnings — weeg dit expliciet mee):\n${geheugen}`
+					: '',
+				richtlijnenIn
+			]
+				.filter(Boolean)
+				.join('\n\n');
 
 			// Teststrategie-configuratie (scope + middelen) → stuurt de generatie.
 			const rawCfg = (body.config ?? {}) as Record<string, unknown>;

@@ -48,6 +48,7 @@ export interface Database {
 					status: ClientStatus;
 					huidige_fase: ClientFase;
 					testplan: Json | null;
+					loop_geheugen: string | null;
 					created_at: string;
 					updated_at: string;
 				};
@@ -59,6 +60,7 @@ export interface Database {
 					status?: ClientStatus;
 					huidige_fase?: ClientFase;
 					testplan?: Json | null;
+					loop_geheugen?: string | null;
 					created_at?: string;
 					updated_at?: string;
 				};
@@ -70,6 +72,7 @@ export interface Database {
 					status?: ClientStatus;
 					huidige_fase?: ClientFase;
 					testplan?: Json | null;
+					loop_geheugen?: string | null;
 					created_at?: string;
 					updated_at?: string;
 				};

@@ -1,16 +1,28 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Card from '$lib/components/ui/card';
 	import IntakeProgress from '$lib/components/app/IntakeProgress.svelte';
 	import { STATUSSEN, STATUS_LABELS, FASE_LABELS } from '$lib/config';
 	import { datumKort, relatieveTijd } from '$lib/format';
+	import { postJSON } from '$lib/saver.svelte';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import Brain from '@lucide/svelte/icons/brain';
 
 	let { data } = $props();
 	let client = $derived(data.client);
 	let base = $derived(`/klanten/${client.id}`);
 	let andereStatussen = $derived(STATUSSEN.filter((s) => s !== client.status));
+
+	// svelte-ignore state_referenced_locally
+	let geheugen = $state(data.client.loop_geheugen ?? '');
+	$effect(() => {
+		geheugen = data.client.loop_geheugen ?? '';
+	});
+	function saveGeheugen() {
+		return postJSON('/api/client', { type: 'geheugen', clientId: client.id, tekst: geheugen });
+	}
 
 	let tegels = $derived([
 		{ label: 'Intake', waarde: `${data.reis.intakePct}%`, sub: 'ingevuld', href: `${base}/intake` },
@@ -75,6 +87,29 @@
 		</a>
 	{/each}
 </div>
+
+<!-- Loop-geheugen: het cumulatieve brein per klant -->
+<Card.Root class="mb-6 border-brand-lime/40 bg-brand-mint/10">
+	<Card.Header>
+		<Card.Title class="flex items-center gap-2 text-base">
+			<Brain class="size-4 text-brand-green" />
+			Loop-geheugen
+		</Card.Title>
+		<Card.Description>
+			Wat we over deze klant hebben geleerd en besloten — dit weegt automatisch mee bij het genereren
+			van nieuwe matrixen. Winnaars worden hier automatisch toegevoegd; je kunt zelf besluiten en
+			inzichten aanvullen.
+		</Card.Description>
+	</Card.Header>
+	<Card.Content>
+		<Textarea
+			bind:value={geheugen}
+			onblur={saveGeheugen}
+			rows={4}
+			placeholder="Bijv. 'UGC werkt beter dan sfeer bij fan-identiteit', 'doelgroep reageert op urgentie', 'vermijd te lange intro's'…"
+		/>
+	</Card.Content>
+</Card.Root>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 	<!-- Intake-voortgang -->
