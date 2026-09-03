@@ -574,15 +574,10 @@
 					<span class="text-muted-foreground">Opgeslagen</span>
 				{/if}
 			</div>
-			{#if data.heeftTriggerMap && actief.length > 0}
-				<Button variant="outline" onclick={() => startGenereren()} disabled={bezigGenereren}>
-					{#if bezigGenereren}
-						<LoaderCircle class="size-4 animate-spin" />
-						Genereren…
-					{:else}
-						<Sparkles class="size-4" />
-						Opzet genereren
-					{/if}
+			{#if data.heeftTriggerMap}
+				<Button variant="outline" href={`/klanten/${data.client.id}/testruimte`}>
+					<Sparkles class="size-4" />
+					Testruimte
 				</Button>
 			{/if}
 			<Button onclick={rijToevoegen}>
@@ -1050,7 +1045,7 @@
 				class="text-sm font-medium text-muted-foreground hover:text-foreground"
 				onclick={() => (toonRichtlijnen = !toonRichtlijnen)}
 			>
-				{toonRichtlijnen ? '−' : '+'} Extra sturing meegeven aan "Opzet genereren"{richtlijnen.trim()
+				{toonRichtlijnen ? '−' : '+'} Extra sturing voor het AI-genereren (plan / verfijnen){richtlijnen.trim()
 					? ' (actief)'
 					: ' (optioneel)'}
 			</button>
@@ -1091,15 +1086,15 @@
 	{:else if actief.length === 0 && data.heeftTriggerMap}
 		<div class="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
 			<Sparkles class="mx-auto size-6 text-accent" />
-			<p class="mt-2 text-sm font-medium">Genereer een matrix-opzet uit je trigger map</p>
+			<p class="mt-2 text-sm font-medium">Stel je testset samen in de Testruimte</p>
 			<p class="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-				Claude stelt een set concepten voor (funnelfase, invalshoek, format, structuur, hypothese) op
-				basis van je trigger map. Je kunt alles daarna vrij aanpassen.
+				In de Testruimte kies je gericht welke combinaties je test — of laat je de AI een set
+				voorstellen. De concepten verschijnen daarna hier in de matrix.
 			</p>
 			<div class="mt-4 flex flex-wrap justify-center gap-2">
-				<Button onclick={() => startGenereren()} disabled={bezigGenereren}>
+				<Button href={`/klanten/${data.client.id}/testruimte`}>
 					<Sparkles class="size-4" />
-					Matrix-opzet genereren
+					Naar de Testruimte
 				</Button>
 				{#if overneembareInvalshoeken.length > 0}
 					<Button variant="outline" onclick={neemInvalshoekenOver}>
