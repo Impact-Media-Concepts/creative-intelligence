@@ -8,6 +8,7 @@
 	import { saver, postJSON } from '$lib/saver.svelte';
 	import type { Concept } from '$lib/supabase/database.types';
 	import { SCRIPT_BEATS, type Script } from '$lib/productie';
+	import { briefSecties, briefNaarMarkdown, type Brief } from '$lib/sprint';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import Check from '@lucide/svelte/icons/check';
@@ -15,6 +16,9 @@
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import Package from '@lucide/svelte/icons/package';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import FileText from '@lucide/svelte/icons/file-text';
+	import Copy from '@lucide/svelte/icons/copy';
+	import Download from '@lucide/svelte/icons/download';
 
 	let { data } = $props();
 
@@ -37,7 +41,54 @@
 	});
 
 	let bezig = $state<Record<string, boolean>>({});
+	let bezigBrief = $state<Record<string, boolean>>({});
+	let gekopieerd = $state<Record<string, boolean>>({});
 	let fout = $state<string | null>(null);
+
+	function brief(c: Rij): Brief | null {
+		return (c.brief as Brief | null) ?? null;
+	}
+	async function genBrief(c: Rij) {
+		bezigBrief[c.id] = true;
+		fout = null;
+		try {
+			const { brief: b } = await postJSON<{ brief: Brief }>(
+				'/api/sprint',
+				{ type: 'brief', id: c.id },
+				{ taak: 'Brief genereren', ververs: true }
+			);
+			c.brief = b as unknown as Rij['brief'];
+		} catch (e) {
+			fout = e instanceof Error ? e.message : 'Brief genereren mislukt';
+		} finally {
+			bezigBrief[c.id] = false;
+		}
+	}
+	async function kopieerBrief(c: Rij) {
+		const b = brief(c);
+		if (!b) return;
+		try {
+			await navigator.clipboard.writeText(briefNaarMarkdown(b, c.invalshoek || 'concept', c.format));
+			gekopieerd[c.id] = true;
+			setTimeout(() => (gekopieerd[c.id] = false), 2000);
+		} catch {
+			fout = 'Kopiëren naar klembord mislukt.';
+		}
+	}
+	function exporteerBrief(c: Rij) {
+		const b = brief(c);
+		if (!b) return;
+		const md = briefNaarMarkdown(b, c.invalshoek || 'concept', c.format);
+		const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+		const naam =
+			'brief-' +
+			(c.invalshoek || 'concept').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${naam || 'brief'}.md`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
 
 	function saveVeld(c: Rij, veld: 'referentie' | 'props') {
 		return postJSON('/api/concepts', { type: 'update', id: c.id, patch: { [veld]: c[veld] } });
@@ -76,13 +127,13 @@
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div
 			data-tour-order="1"
-			data-tour-title="Productie"
-			data-tour-text="De brug naar de shoot: per concept een 5-beats script (Hook → Probleem → Oplossing → Resultaat → CTA), een referentielink en de props. Klik 'Genereer script' om de AI het script te laten schrijven."
+			data-tour-title="Creatie"
+			data-tour-text="Alles per concept om de creative te maken: een strategische brief (wie/gedrag/succes), een 5-beats script (Hook → Probleem → Oplossing → Resultaat → CTA), een referentielink en de props. De AI kan brief én script voor je schrijven."
 		>
-			<h2 class="text-lg font-semibold">Productie</h2>
+			<h2 class="text-lg font-semibold">Creatie</h2>
 			<p class="max-w-2xl text-sm text-muted-foreground">
-				De brug tussen matrix en shoot: per concept een concreet 5-beats script, een referentie en
-				de props — klaar om te briefen aan de designers.
+				De brug tussen matrix en shoot: per concept een strategische brief én een concreet 5-beats
+				script, met referentie en props — klaar om te briefen aan de designers.
 			</p>
 		</div>
 		<div class="flex items-center gap-1.5 text-xs">
@@ -128,6 +179,41 @@
 					</div>
 				</Card.Header>
 				<Card.Content class="space-y-4">
+					<!-- Strategische brief -->
+					<div class="rounded-md border bg-muted/20 p-3">
+						<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+							<span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								<FileText class="size-3.5" /> Strategische brief
+							</span>
+							<div class="flex items-center gap-1.5">
+								{#if brief(c)}
+									<Button variant="ghost" size="sm" class="text-muted-foreground" onclick={() => kopieerBrief(c)}>
+										{#if gekopieerd[c.id]}<Check class="size-4 text-brand-green" /> Gekopieerd{:else}<Copy class="size-4" /> Kopieer{/if}
+									</Button>
+									<Button variant="ghost" size="sm" class="text-muted-foreground" onclick={() => exporteerBrief(c)}>
+										<Download class="size-4" /> Export
+									</Button>
+								{/if}
+								<Button variant="outline" size="sm" onclick={() => genBrief(c)} disabled={bezigBrief[c.id]}>
+									{#if bezigBrief[c.id]}<LoaderCircle class="size-4 animate-spin" /> Genereren…{:else}<FileText class="size-4" /> {brief(c) ? 'Opnieuw' : 'Genereer brief'}{/if}
+								</Button>
+							</div>
+						</div>
+						{#if brief(c)}
+							{@const b = brief(c)!}
+							<div class="grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
+								{#each briefSecties(c.format) as sectie (sectie.key)}
+									<div>
+										<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectie.label}</p>
+										<p class="mt-0.5 text-sm">{b[sectie.key]}</p>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-xs text-muted-foreground">Nog geen brief — genereer 'm voor de strategische onderbouwing (wie, gewenst gedrag, succescriterium).</p>
+						{/if}
+					</div>
+
 					<!-- Script-beats -->
 					<div class="grid gap-3 sm:grid-cols-5">
 						{#each SCRIPT_BEATS as b (b.key)}

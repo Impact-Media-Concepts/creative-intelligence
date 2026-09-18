@@ -25,8 +25,9 @@
 		{ label: 'Overzicht', sub: '' },
 		{ label: 'Intake', sub: '/intake' },
 		{ label: 'Trigger Map', sub: '/triggermap' },
+		{ label: 'Testruimte', sub: '/testruimte' },
 		{ label: 'Matrix', sub: '/matrix' },
-		{ label: 'Brief', sub: '/brief' },
+		{ label: 'Creatie', sub: '/productie' },
 		{ label: 'Sprint', sub: '/sprint' },
 		{ label: 'Learnings', sub: '/learnings' }
 	];

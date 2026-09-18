@@ -1,16 +1,7 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
-	const id = params.id;
-
-	const { data: concepten } = await supabase
-		.from('concepts')
-		.select('*')
-		.eq('client_id', id)
-		.eq('gearchiveerd', false)
-		.order('created_at', { ascending: true });
-
-	return {
-		concepten: concepten ?? []
-	};
+// Brief is samengevoegd in de Creatie-tab (Productie). Oude links doorsturen.
+export const load: PageServerLoad = async ({ params }) => {
+	redirect(308, `/klanten/${params.id}/productie`);
 };

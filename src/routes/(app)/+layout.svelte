@@ -35,8 +35,7 @@
 						['Trigger Map', '/triggermap'],
 						['Testruimte', '/testruimte'],
 						['Matrix', '/matrix'],
-						['Brief', '/brief'],
-						['Productie', '/productie'],
+						['Creatie', '/productie'],
 						['Sprint', '/sprint'],
 						['Learnings', '/learnings']
 					] as const
