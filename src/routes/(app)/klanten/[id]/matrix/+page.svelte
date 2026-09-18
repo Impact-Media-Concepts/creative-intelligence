@@ -289,6 +289,7 @@
 	const DOELSTELLINGEN = ['Awareness / engagement', 'Balans', 'Direct rendement (CPA/ROAS)'];
 	const MAX_VARIANTEN_OPTIES = [2, 3, 4, 5];
 	let toonStrategie = $state(false);
+	let toonPlan = $state(false); // Plan van aanpak standaard ingeklapt — Testruimte is de voordeur
 	let cfgPersonas = $state<string[]>([]);
 	let cfgFunnels = $state<string[]>([]);
 	let cfgMiddelen = $state<string[]>([]);
@@ -602,14 +603,24 @@
 			data-tour-title="Plan van aanpak"
 			data-tour-text="Vóór de matrix stem je de strategie af: kies persona's, funnellagen, middelen en je doel/KPI, laat de AI Content Strategy Expert een plan voorstellen, geef feedback en keur goed. Pas dan rollen matrix én testplan consistent uit — schoon testen, één variabele per test."
 		>
-			<div>
-				<h3 class="text-base font-semibold">Plan van aanpak</h3>
-				<p class="text-sm text-muted-foreground">
-					Stem eerst de teststrategie af met de AI Content Strategy Expert — geef feedback, keur goed, en
-					genereer de matrix pas daarna. Zo klopt de matrix meteen en hoef je 'm niet meer te tweaken.
-				</p>
-			</div>
+			<button
+				type="button"
+				class="flex w-full items-center justify-between gap-2 text-left"
+				onclick={() => (toonPlan = !toonPlan)}
+			>
+				<div>
+					<h3 class="text-base font-semibold">
+						Plan van aanpak <span class="font-normal text-muted-foreground">— optioneel</span>
+					</h3>
+					<p class="text-sm text-muted-foreground">
+						Stem desgewenst eerst de teststrategie af met de AI-strateeg (plan → feedback → goedkeuren).
+						Niet verplicht: je kunt ook direct in de Testruimte je set samenstellen.
+					</p>
+				</div>
+				<ChevronDown class={cn('size-5 shrink-0 text-muted-foreground transition-transform', toonPlan && 'rotate-180')} />
+			</button>
 
+			{#if toonPlan}
 			<!-- Teststrategie (scope & middelen) -->
 			<div class="rounded-md border bg-background p-3">
 				<button
@@ -783,6 +794,7 @@
 						</Button>
 					</div>
 				</div>
+			{/if}
 			{/if}
 		</section>
 	{/if}
