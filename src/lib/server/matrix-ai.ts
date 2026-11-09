@@ -1,6 +1,6 @@
 import { claudeJSON } from './claude';
 import type { Funnelfase, Prioriteit } from '$lib/supabase/database.types';
-import { BEWUSTZIJN_LABELS, funnelUitBewustzijn } from '$lib/trigger-map';
+import { BEWUSTZIJN_LABELS, funnelUitBewustzijn, normaliseerBewustzijn } from '$lib/trigger-map';
 
 export interface VoorgesteldConcept {
 	/** Afgeleid uit `awareness` (legacy-kolom); de AI kiest alleen de bewustzijnsfase. */
@@ -237,9 +237,10 @@ export async function genereerMatrix(
 	// Vercel-timeout van 60s); 'low' houdt de kwaliteit op peil en de duur ruim onder de limiet.
 	const res = await claudeJSON<{ concepten: VoorgesteldConcept[] }>(SYSTEM, context, SCHEMA, 16000, 'low');
 	// De AI kiest de bewustzijnsfase (awareness); de legacy-funnelfase wordt eruit afgeleid.
-	res.data.concepten = res.data.concepten.map((c) => ({
-		...c,
-		funnelfase: funnelUitBewustzijn(c.awareness)
-	}));
+	res.data.concepten = res.data.concepten.map((c) => {
+		// De proxy dwingt het schema niet af → AI-waarde normaliseren; onbekend blijft leeg.
+		const awareness = normaliseerBewustzijn(c.awareness);
+		return { ...c, awareness, funnelfase: funnelUitBewustzijn(awareness) };
+	});
 	return res;
 }

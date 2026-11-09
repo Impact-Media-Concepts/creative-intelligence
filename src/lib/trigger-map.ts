@@ -103,6 +103,24 @@ export function bewustzijnTaak(label: string | null | undefined): string {
 	return BEWUSTZIJN_FASEN.find((f) => f.label === label)?.taak ?? '';
 }
 
+/**
+ * Zet AI-uitvoer om naar een geldige bewustzijnsfase. De usage-proxy dwingt het JSON-schema
+ * niet af, dus de AI kan "probleem-bewust", "Problem aware" e.d. schrijven. Onbekend → undefined.
+ */
+export function normaliseerBewustzijn(waarde: unknown): Bewustzijn | undefined {
+	const sleutel = (t: string) => t.toLowerCase().replace(/[^a-z]/g, '');
+	const w = sleutel(String(waarde ?? ''));
+	if (!w) return undefined;
+	const alias: Record<string, Bewustzijn> = {
+		unaware: 'Onbewust',
+		problemaware: 'Probleembewust',
+		solutionaware: 'Oplossingsbewust',
+		productaware: 'Productbewust',
+		mostaware: 'Meest bewust'
+	};
+	return BEWUSTZIJN_LABELS.find((l) => sleutel(l) === w) ?? alias[w];
+}
+
 /** Terugval voor oudere data zonder bewustzijn: TOFU→Probleembewust, MOFU→Oplossingsbewust, BOFU→Productbewust. */
 export function bewustzijnUitFunnel(f: string | null | undefined): Bewustzijn {
 	return f === 'BOFU' ? 'Productbewust' : f === 'MOFU' ? 'Oplossingsbewust' : 'Probleembewust';

@@ -1,5 +1,10 @@
 import { claudeJSON } from './claude';
-import { BEWUSTZIJN_LABELS, funnelUitBewustzijn, type TriggerMapData } from '$lib/trigger-map';
+import {
+	BEWUSTZIJN_LABELS,
+	funnelUitBewustzijn,
+	normaliseerBewustzijn,
+	type TriggerMapData
+} from '$lib/trigger-map';
 import { BRON1_VRAGEN, BRON2_VRAGEN } from '$lib/intake-vragen';
 import { heeftInhoud } from '$lib/progress';
 
@@ -197,9 +202,10 @@ export async function genereerTriggerMap(intakeTekst: string): Promise<Generatie
 	const res = await claudeJSON<TriggerMapData>(SYSTEM_PROMPT, prompt, TRIGGER_MAP_SCHEMA, 16000, 'medium');
 	// De AI kiest de bewustzijnsfase; de legacy-funnelfase (TOFU/MOFU/BOFU) wordt eruit afgeleid
 	// zodat kolommen en code die er nog op leunen (meta-sync, guardrail) blijven werken.
-	res.data.invalshoeken = res.data.invalshoeken.map((i) => ({
-		...i,
-		funnelfase: funnelUitBewustzijn(i.bewustzijn)
-	}));
+	res.data.invalshoeken = res.data.invalshoeken.map((i) => {
+		// De proxy dwingt het schema niet af → AI-waarde normaliseren (alias/hoofdletters).
+		const bewustzijn = normaliseerBewustzijn(i.bewustzijn);
+		return { ...i, bewustzijn, funnelfase: funnelUitBewustzijn(bewustzijn) };
+	});
 	return res;
 }
