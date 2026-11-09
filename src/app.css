@@ -4,109 +4,162 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Online Klik huisstijl
- * Primair:      #1a5c3a (donkergroen)
- * Accent:       #7dc843 (limegroen)
- * Achtergrond:  #e8f5e0 (mint)
- * Wit:          #ffffff
+ * Online Klik huisstijl (brandbook — design-system v12)
+ * Koppen:       "Mic 32 New Rounded" (gelicenseerd)
+ * Body:         Rubik (Google Fonts, geladen in app.html)
+ * Officieel palet = vier groenen + oranje accent.
+ *   Emerald #00573C · Actie #33B784 · Limoen #96D247 · Gras #52AE32 · Oranje #FA5E19
  */
 
-:root {
-	--radius: 0.65rem;
+/* ---- Mic 32 New Rounded (koppen) ---- */
+@font-face {
+	font-family: 'Mic 32 New Rounded';
+	src:
+		url('/fonts/Mic32NewRounded-Light.woff2') format('woff2'),
+		url('/fonts/Mic32NewRounded-Light.woff') format('woff');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Mic 32 New Rounded';
+	src:
+		url('/fonts/Mic32NewRounded-Regular.woff2') format('woff2'),
+		url('/fonts/Mic32NewRounded-Regular.woff') format('woff');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Mic 32 New Rounded';
+	src:
+		url('/fonts/Mic32NewRounded-Medium.woff2') format('woff2'),
+		url('/fonts/Mic32NewRounded-Medium.woff') format('woff');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Mic 32 New Rounded';
+	src:
+		url('/fonts/Mic32NewRounded-Bold.woff2') format('woff2'),
+		url('/fonts/Mic32NewRounded-Bold.woff') format('woff');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
 
-	--background: #ffffff;
-	--foreground: #10231a;
+:root {
+	--radius: 0.75rem;
+
+	/* Families */
+	--font-sans: 'Rubik', system-ui, sans-serif;
+	--font-display: 'Mic 32 New Rounded', 'Nunito', 'Rubik', system-ui, sans-serif;
+
+	/* Page = zachte mist, kaarten = wit (brand-feel) */
+	--background: #f1f6f2;
+	--foreground: #14231c;
 
 	--card: #ffffff;
-	--card-foreground: #10231a;
+	--card-foreground: #14231c;
 
 	--popover: #ffffff;
-	--popover-foreground: #10231a;
+	--popover-foreground: #14231c;
 
-	--primary: #1a5c3a;
+	--primary: #00573c;
 	--primary-foreground: #ffffff;
 
-	--secondary: #e8f5e0;
-	--secondary-foreground: #1a5c3a;
+	--secondary: #dcf3ea;
+	--secondary-foreground: #00573c;
 
-	--muted: #eef6e8;
-	--muted-foreground: #4b5e54;
+	--muted: #f1f6f2;
+	--muted-foreground: #5c6b63;
 
-	--accent: #7dc843;
-	--accent-foreground: #10231a;
+	--accent: #eaf5ef;
+	--accent-foreground: #00573c;
 
-	--destructive: #dc2626;
+	--destructive: #d64545;
 	--destructive-foreground: #ffffff;
 
-	--border: #d6e7cc;
-	--input: #d6e7cc;
-	--ring: #7dc843;
+	--border: #e4eae6;
+	--input: #e4eae6;
+	--ring: #33b784;
 
-	--chart-1: #1a5c3a;
-	--chart-2: #7dc843;
-	--chart-3: #2e8b57;
-	--chart-4: #a7d98a;
-	--chart-5: #0f3d26;
+	--chart-1: #00573c;
+	--chart-2: #33b784;
+	--chart-3: #96d247;
+	--chart-4: #52ae32;
+	--chart-5: #fa5e19;
 
-	/* Donkergroene sidebar in de huisstijl */
-	--sidebar: #1a5c3a;
-	--sidebar-foreground: #eaf5e3;
-	--sidebar-primary: #7dc843;
-	--sidebar-primary-foreground: #10231a;
-	--sidebar-accent: #23724a;
+	/* Emeraldgroene sidebar */
+	--sidebar: #00573c;
+	--sidebar-foreground: #c8ebd6;
+	--sidebar-primary: #96d247;
+	--sidebar-primary-foreground: #00573c;
+	--sidebar-accent: #00432e;
 	--sidebar-accent-foreground: #ffffff;
-	--sidebar-border: #23724a;
-	--sidebar-ring: #7dc843;
+	--sidebar-border: #00432e;
+	--sidebar-ring: #96d247;
 
-	/* Extra merk-tokens voor eigen componenten */
-	--brand-green: #1a5c3a;
-	--brand-lime: #7dc843;
-	--brand-mint: #e8f5e0;
+	/* Merk-tokens voor eigen componenten */
+	--brand-green: #00573c;
+	--brand-action: #33b784;
+	--brand-lime: #96d247;
+	--brand-grass: #52ae32;
+	--brand-orange: #fa5e19;
+	--brand-mint: #dcf3ea;
 }
 
 .dark {
-	--background: #0d1a13;
-	--foreground: #eaf5e3;
+	--background: #00291c;
+	--foreground: #eaf5ef;
 
-	--card: #12241a;
-	--card-foreground: #eaf5e3;
+	--card: #00432e;
+	--card-foreground: #eaf5ef;
 
-	--popover: #12241a;
-	--popover-foreground: #eaf5e3;
+	--popover: #00432e;
+	--popover-foreground: #eaf5ef;
 
-	--primary: #7dc843;
-	--primary-foreground: #10231a;
+	--primary: #96d247;
+	--primary-foreground: #00291c;
 
-	--secondary: #1c3527;
-	--secondary-foreground: #eaf5e3;
+	--secondary: #0b6e4e;
+	--secondary-foreground: #eaf5ef;
 
-	--muted: #1c3527;
+	--muted: #0b6e4e;
 	--muted-foreground: #a7c2b3;
 
-	--accent: #23724a;
-	--accent-foreground: #eaf5e3;
+	--accent: #00573c;
+	--accent-foreground: #eaf5ef;
 
 	--destructive: #ef4444;
 	--destructive-foreground: #ffffff;
 
-	--border: #24402f;
-	--input: #24402f;
-	--ring: #7dc843;
+	--border: #0b6e4e;
+	--input: #0b6e4e;
+	--ring: #96d247;
 
-	--chart-1: #7dc843;
-	--chart-2: #2e8b57;
-	--chart-3: #a7d98a;
-	--chart-4: #1a5c3a;
-	--chart-5: #4b5e54;
+	--chart-1: #96d247;
+	--chart-2: #33b784;
+	--chart-3: #52ae32;
+	--chart-4: #00573c;
+	--chart-5: #fa5e19;
 
-	--sidebar: #0f2117;
-	--sidebar-foreground: #eaf5e3;
-	--sidebar-primary: #7dc843;
-	--sidebar-primary-foreground: #10231a;
-	--sidebar-accent: #1c3527;
-	--sidebar-accent-foreground: #eaf5e3;
-	--sidebar-border: #24402f;
-	--sidebar-ring: #7dc843;
+	--sidebar: #00291c;
+	--sidebar-foreground: #c8ebd6;
+	--sidebar-primary: #96d247;
+	--sidebar-primary-foreground: #00291c;
+	--sidebar-accent: #00432e;
+	--sidebar-accent-foreground: #eaf5ef;
+	--sidebar-border: #0b6e4e;
+	--sidebar-ring: #96d247;
+
+	--brand-green: #00573c;
+	--brand-action: #33b784;
+	--brand-lime: #96d247;
+	--brand-grass: #52ae32;
+	--brand-orange: #fa5e19;
+	--brand-mint: #0b6e4e;
 }
 
 @theme inline {
@@ -114,6 +167,9 @@
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
 	--radius-xl: calc(var(--radius) + 4px);
+
+	--font-sans: var(--font-sans);
+	--font-display: var(--font-display);
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -159,7 +215,10 @@
 	--color-sidebar-ring: var(--sidebar-ring);
 
 	--color-brand-green: var(--brand-green);
+	--color-brand-action: var(--brand-action);
 	--color-brand-lime: var(--brand-lime);
+	--color-brand-grass: var(--brand-grass);
+	--color-brand-orange: var(--brand-orange);
 	--color-brand-mint: var(--brand-mint);
 }
 
@@ -169,5 +228,13 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		font-family: var(--font-sans);
+	}
+	/* Koppen in Mic 32 New Rounded (brandbook: nooit voor bodytekst) */
+	h1,
+	h2,
+	h3,
+	h4 {
+		font-family: var(--font-display);
 	}
 }
