@@ -46,6 +46,8 @@
 		const b = `/klanten/${klantId}`;
 		return href === b ? pad === b : pad.startsWith(href);
 	}
+	// Fasen vóór de huidige pagina tonen een ✓ (voortgang in de loop).
+	let actieveIndex = $derived(loopFasen.findIndex((f) => faseActief(f.href)));
 
 	// ---- Rondleiding: auto-start voor nieuwe gebruikers (1×), altijd te heropenen ----
 	// De tour loopt de fasen van een klant langs; gebruik de huidige klant of anders de eerste.
@@ -88,10 +90,10 @@
 
 	function navClass(actief: boolean) {
 		return cn(
-			'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+			'flex items-center gap-3 rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
 			actief
 				? 'bg-sidebar-accent text-sidebar-accent-foreground'
-				: 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
+				: 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-white'
 		);
 	}
 </script>
@@ -102,10 +104,10 @@
 	>
 		<!-- Merk -->
 		<a href="/" class="flex flex-col gap-0.5 px-5 py-5">
-			<span class="text-[11px] font-semibold uppercase tracking-widest text-sidebar-primary">
+			<span class="text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-primary">
 				{ORGANISATIE}
 			</span>
-			<span class="text-lg font-bold leading-tight">{APP_NAAM}</span>
+			<span class="font-display text-xl font-bold leading-tight text-white">{APP_NAAM}</span>
 		</a>
 
 		{#if inKlant && huidigeKlant}
@@ -127,8 +129,10 @@
 				<span class="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
 					Klantomgeving
 				</span>
-				<div class="flex items-center gap-2.5 rounded-md bg-sidebar-accent px-3 py-2.5">
-					<span class={cn('size-2.5 shrink-0 rounded-full', statusKleur[huidigeKlant.status])}></span>
+				<div class="flex items-center gap-2.5 rounded-2xl bg-sidebar-accent px-3.5 py-3">
+					<span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground">
+						{huidigeKlant.naam.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase()}
+					</span>
 					<span class="truncate text-sm font-semibold text-sidebar-accent-foreground">
 						{huidigeKlant.naam}
 					</span>
@@ -143,13 +147,15 @@
 						<a href={f.href} class={navClass(faseActief(f.href))}>
 							<span
 								class={cn(
-									'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+									'flex size-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
 									faseActief(f.href)
-										? 'bg-brand-lime text-brand-green'
-										: 'bg-sidebar-accent/60 text-sidebar-foreground/70'
+										? 'bg-sidebar-primary text-sidebar-primary-foreground'
+										: i < actieveIndex
+											? 'bg-sidebar-primary/25 text-sidebar-primary'
+											: 'bg-white/10 text-sidebar-foreground/70'
 								)}
 							>
-								{i + 1}
+								{i < actieveIndex ? '✓' : i + 1}
 							</span>
 							{f.label}
 						</a>
