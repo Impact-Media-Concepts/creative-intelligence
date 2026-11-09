@@ -46,8 +46,10 @@
 		const b = `/klanten/${klantId}`;
 		return href === b ? pad === b : pad.startsWith(href);
 	}
-	// Fasen vóór de huidige pagina tonen een ✓ (voortgang in de loop).
-	let actieveIndex = $derived(loopFasen.findIndex((f) => faseActief(f.href)));
+	// ✓ = echte voortgang van de klant (clients.huidige_fase), niet de pagina waar je nu bent.
+	// Positie van de klantfase in de 8 sidebar-stappen; alles ervoor is afgerond.
+	const FASE_NAAR_STAP: Record<string, number> = { intake: 1, trigger_map: 2, matrix: 4, sprint: 6 };
+	let klantStap = $derived(FASE_NAAR_STAP[huidigeKlant?.huidige_fase ?? 'intake'] ?? 1);
 
 	// ---- Rondleiding: auto-start voor nieuwe gebruikers (1×), altijd te heropenen ----
 	// De tour loopt de fasen van een klant langs; gebruik de huidige klant of anders de eerste.
@@ -150,12 +152,12 @@
 									'flex size-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
 									faseActief(f.href)
 										? 'bg-sidebar-primary text-sidebar-primary-foreground'
-										: i < actieveIndex
+										: i < klantStap
 											? 'bg-sidebar-primary/25 text-sidebar-primary'
 											: 'bg-white/10 text-sidebar-foreground/70'
 								)}
 							>
-								{i < actieveIndex ? '✓' : i + 1}
+								{i < klantStap && !faseActief(f.href) ? '✓' : i + 1}
 							</span>
 							{f.label}
 						</a>

@@ -204,10 +204,12 @@
 
 <div class="space-y-5">
 	{#if !data.heeftTriggerMap}
-		<div class="flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-			<TriangleAlert class="size-4 shrink-0" />
-			Maak eerst een <strong>trigger map</strong> — daaruit komen de invalshoeken (angles).
-			<a href={`${base}/triggermap`} class="font-medium underline">Naar Trigger Map</a>
+		<div class="flex items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+			<TriangleAlert class="mt-0.5 size-4 shrink-0" />
+			<span>
+				Maak eerst een <strong>trigger map</strong> — daaruit komen de invalshoeken (angles).
+				<a href={`${base}/triggermap`} class="whitespace-nowrap font-medium underline">Naar Trigger Map</a>
+			</span>
 		</div>
 	{:else}
 		<!-- Hero: vraag + horizon + live som -->
