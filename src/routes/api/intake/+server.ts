@@ -353,7 +353,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				const datum = new Date().toLocaleDateString('nl-NL');
 				const volledig =
 					res.analyse +
-					(links.length ? `\n\nBekijk de langst lopende ads (check zelf het formaat):\n${links.join('\n')}` : '') +
+					(links.length ? `\n\nBekijk de langst lopende ads:\n${links.join('\n')}` : '') +
 					`\n\n(Bron: Meta Ad Library, NL — ${samenvatting.totaal} ads, ${samenvatting.actief} actief, opgehaald op ${datum}.)`;
 
 				const { error: dbFout } = await sb

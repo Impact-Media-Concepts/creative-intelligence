@@ -2,8 +2,9 @@
  * Meta Ad Library (officiële Graph API: /ads_archive) — publieke advertenties van concurrenten.
  *
  * Alleen het officiële endpoint, geen scraping van de website (dat is tegen de Meta-voorwaarden).
- * De API geeft GEEN formaat (video/static) en geen prestaties terug: wel tekst, startdatum,
- * of de ad nog loopt, platformen en een snapshot-link. "Lang lopend" is een goede aanwijzing
+ * De velden bevatten GEEN formaat en geen prestaties: wel tekst, startdatum, of de ad nog loopt,
+ * platformen, een snapshot-link en (EU) een geschat bereik. Het formaat leiden we af via de
+ * media_type-zoekfilter (VIDEO/IMAGE). "Lang lopend" is een goede aanwijzing
  * voor "winnend" (niemand laat een verliezende ad maandenlang draaien), maar geen bewijs.
  */
 
@@ -28,8 +29,11 @@ const VELDEN = [
 	'ad_creative_link_titles',
 	'ad_creative_link_descriptions',
 	'publisher_platforms',
-	'ad_snapshot_url'
+	'ad_snapshot_url',
+	'eu_total_reach'
 ].join(',');
+
+const VELDEN_ID = 'id,page_name';
 
 export class AdLibraryFout extends Error {
 	constructor(
@@ -66,14 +70,21 @@ function vertaalFout(status: number, body: string): AdLibraryFout {
 }
 
 /** Haalt advertenties op met één specifiek token. */
-async function haalMetToken(zoek: string, land: string, token: string, maxAds: number): Promise<AdLibAd[]> {
+async function haalMetToken(
+	zoek: string,
+	land: string,
+	token: string,
+	maxAds: number,
+	opties: { mediaType?: 'VIDEO' | 'IMAGE'; velden?: string } = {}
+): Promise<AdLibAd[]> {
 	const url = new URL(`${BASE}/ads_archive`);
 	url.searchParams.set('access_token', token);
 	url.searchParams.set('search_terms', zoek);
 	url.searchParams.set('ad_reached_countries', JSON.stringify([land]));
 	url.searchParams.set('ad_active_status', 'ALL');
 	url.searchParams.set('ad_type', 'ALL');
-	url.searchParams.set('fields', VELDEN);
+	url.searchParams.set('fields', opties.velden ?? VELDEN);
+	if (opties.mediaType) url.searchParams.set('media_type', opties.mediaType);
 	url.searchParams.set('limit', '50');
 
 	const alles: AdLibAd[] = [];
@@ -87,6 +98,27 @@ async function haalMetToken(zoek: string, land: string, token: string, maxAds: n
 		volgende = j.paging?.next ?? null;
 	}
 	return alles.slice(0, maxAds);
+}
+
+/**
+ * Bepaalt het formaat per ad via de media_type-filter van de API (twee extra, lichte zoekopdrachten).
+ * Mislukt dat, dan blijft het formaat leeg ("onbekend"): de scan zelf valt daar nooit over.
+ */
+async function zetFormaten(ads: AdLibAd[], zoek: string, land: string, token: string, max: number) {
+	try {
+		const [video, beeld] = await Promise.all([
+			haalMetToken(zoek, land, token, max, { mediaType: 'VIDEO', velden: VELDEN_ID }),
+			haalMetToken(zoek, land, token, max, { mediaType: 'IMAGE', velden: VELDEN_ID })
+		]);
+		const videoIds = new Set(video.map((a) => a.id));
+		const beeldIds = new Set(beeld.map((a) => a.id));
+		for (const a of ads) {
+			if (videoIds.has(a.id) && !beeldIds.has(a.id)) a.formaat = 'video';
+			else if (beeldIds.has(a.id) && !videoIds.has(a.id)) a.formaat = 'afbeelding';
+		}
+	} catch {
+		// formaat is een extra; de rest van de scan werkt ook zonder
+	}
 }
 
 /**
@@ -106,7 +138,10 @@ export async function zoekAdLibrary(opties: {
 	let laatste: AdLibraryFout | null = null;
 	for (const t of opties.tokens) {
 		try {
-			const ads = await haalMetToken(opties.zoek, opties.land ?? 'NL', t.token, opties.maxAds ?? 150);
+			const land = opties.land ?? 'NL';
+			const max = opties.maxAds ?? 150;
+			const ads = await haalMetToken(opties.zoek, land, t.token, max);
+			await zetFormaten(ads, opties.zoek, land, t.token, max);
 			return { ads, toegang: t.soort };
 		} catch (e) {
 			if (e instanceof AdLibraryFout) {

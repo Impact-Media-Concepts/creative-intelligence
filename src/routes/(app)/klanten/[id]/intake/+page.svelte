@@ -858,7 +858,7 @@
 							<p class="mt-1 text-xs text-muted-foreground">
 								Haalt de advertenties van deze concurrent (NL) op uit de officiële Meta Ad Library en vult
 								hieronder "Lang draaiende ad formats" in. Gebruik de exacte naam van hun Facebook-pagina.
-								Het formaat (video/static) staat niet in de data — check dat via de links.
+								Het formaat (video/afbeelding) wordt waar mogelijk herkend; carousels blijven "onbekend" — check dat via de links.
 							</p>
 						</div>
 					</div>

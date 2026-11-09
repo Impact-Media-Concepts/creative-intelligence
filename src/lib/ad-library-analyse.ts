@@ -15,6 +15,10 @@ export interface AdLibAd {
 	ad_creative_link_descriptions?: string[];
 	publisher_platforms?: string[];
 	ad_snapshot_url?: string;
+	/** Geschat bereik in de EU (alleen voor ads die in de EU zijn getoond). */
+	eu_total_reach?: number;
+	/** Door ons gezet via de media_type-filter van de API; ontbreekt als niet te bepalen. */
+	formaat?: 'video' | 'afbeelding';
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -43,8 +47,12 @@ export interface AdSamenvatting {
 	paginaNaam: string;
 	oudsteStart: string | null;
 	platformen: Array<{ naam: string; aantal: number }>;
+	/** Verdeling naar formaat (via de media_type-filter); 'onbekend' = niet bepaalbaar of overig (bv. meme/carousel). */
+	formaten: { video: number; afbeelding: number; onbekend: number };
+	/** Som van het geschatte EU-bereik van alle ads die dat opgeven (schaalindicatie), of null. */
+	totaalBereik: number | null;
 	/** Langst lopende ads (indicatie voor winnaars). */
-	langst: Array<{ dagen: number; actief: boolean; start: string | null; kop: string; tekst: string; snapshot: string | null }>;
+	langst: Array<{ dagen: number; actief: boolean; start: string | null; kop: string; tekst: string; snapshot: string | null; formaat: 'video' | 'afbeelding' | 'onbekend'; bereik: number | null }>;
 	/** Nieuwste ads (waar ze nu mee testen). */
 	nieuwste: Array<{ start: string | null; kop: string; tekst: string }>;
 	/** Aantal gestarte ads per maand (laatste 6 maanden). */
@@ -81,12 +89,18 @@ export function samenvatAds(ads: AdLibAd[], nu = new Date()): AdSamenvatting {
 		tekst: kort(a.ad_creative_bodies?.[0], 260)
 	});
 
+	const formaten = { video: 0, afbeelding: 0, onbekend: 0 };
+	for (const a of ads) formaten[a.formaat ?? 'onbekend']++;
+	const bereiken = ads.map((a) => a.eu_total_reach).filter((n): n is number => typeof n === 'number' && n > 0);
+
 	const starts = metDatum.filter((x) => x.start).map((x) => x.start!.getTime());
 	return {
 		totaal: ads.length,
 		actief: metDatum.filter((x) => x.actief).length,
 		paginaNaam: ads.find((a) => a.page_name)?.page_name ?? '',
 		oudsteStart: starts.length ? new Date(Math.min(...starts)).toISOString().slice(0, 10) : null,
+		formaten,
+		totaalBereik: bereiken.length ? bereiken.reduce((x, y) => x + y, 0) : null,
 		platformen: [...platform.entries()].map(([naam, aantal]) => ({ naam, aantal })).sort((a, b) => b.aantal - a.aantal),
 		langst: [...metDatum]
 			.filter((x) => x.start)
@@ -97,7 +111,9 @@ export function samenvatAds(ads: AdLibAd[], nu = new Date()): AdSamenvatting {
 				actief: x.actief,
 				start: x.start ? x.start.toISOString().slice(0, 10) : null,
 				...tekstVan(x.a),
-				snapshot: x.a.ad_snapshot_url ?? null
+				snapshot: x.a.ad_snapshot_url ?? null,
+				formaat: x.a.formaat ?? 'onbekend',
+				bereik: typeof x.a.eu_total_reach === 'number' ? x.a.eu_total_reach : null
 			})),
 		nieuwste: [...metDatum]
 			.filter((x) => x.start)

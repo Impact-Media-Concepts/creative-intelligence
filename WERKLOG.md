@@ -71,6 +71,11 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-09 — Ad Library: formaat en bereik
+- **Wat:** de Ad Library-scan haalt nu ook het formaat op (twee lichte extra zoekopdrachten met de `media_type`-filter VIDEO en IMAGE; ads in beide of geen van beide blijven "onbekend", bv. carousel/meme) en het door Meta **geschatte EU-bereik** (`eu_total_reach`) per ad. De samenvatting bevat `formaten` en `totaalBereik`; de AI noemt alleen wat in de data staat en benoemt bereik als schatting. Mislukt de formaat-opvraag, dan werkt de rest van de scan gewoon door.
+- **Bestanden:** `src/lib/server/meta/ad-library.ts`, `src/lib/ad-library-analyse.ts`, `src/lib/server/ad-library-ai.ts`, intake-endpoint en -tekst.
+- **Verificatie:** typecheck 0 fouten; berekening getest met nagebootste ads. Live niet getest: Meta weigert de Ad Library API nog tot de identiteitsverificatie (facebook.com/ID) is goedgekeurd. App "Creative Loop" (App ID 1000912803060539) is aangemaakt onder de bedrijfsportfolio, redirect-URI staat op de Vercel-callback.
+
 ### 2026-11-09 — Bottom-up planning (strategie + testplan)
 - **Wat:** de planning-AI (plan van aanpak en testplan) begint nu bij de bewustzijnsfases het dichtst bij conversie (Meest bewust → Productbewust → Oplossingsbewust) en schaalt daarna op naar Probleembewust en Onbewust, tenzij de doelstelling (awareness) of de sturing anders vraagt; de gekozen volgorde wordt kort in `funnelaanpak` benoemd. Past bij de werkwijze uit de klantpresentaties (BOFU eerst, wat daar werkt voedt de bredere fases).
 - **Verificatie:** plan gegenereerd voor testklant: sprints 1-2 Productbewust, 3-4 Oplossingsbewust, 5-6 Probleembewust, 7 Onbewust; Meest bewust overgeslagen omdat er geen invalshoeken zijn (geen opvulling met verzonnen sprints). De standaardsortering van concepten in de matrix/pakket blijft Onbewust → Meest bewust (leesvolgorde); alleen de plan-volgorde is bottom-up.
