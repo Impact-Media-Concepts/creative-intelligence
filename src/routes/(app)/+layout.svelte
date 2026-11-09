@@ -102,7 +102,7 @@
 
 <div class="flex min-h-screen">
 	<aside
-		class="sticky top-0 flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground"
+		class="sticky top-0 flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground print:hidden"
 	>
 		<!-- Merk -->
 		<a href="/" class="flex flex-col gap-0.5 px-5 py-5">
@@ -249,7 +249,7 @@
 		</div>
 	</aside>
 
-	<main class="min-w-0 flex-1 bg-background">
+	<main class="min-w-0 flex-1 bg-background print:bg-white">
 		{@render children()}
 	</main>
 </div>

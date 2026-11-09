@@ -15,8 +15,8 @@
 	<title>{client.naam} · Creative Intelligence</title>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl px-8 py-8">
-	<div class="flex items-start justify-between gap-4">
+<div class="mx-auto max-w-7xl px-8 py-8 print:max-w-none print:p-0">
+	<div class="flex items-start justify-between gap-4 print:hidden">
 		<div class="min-w-0">
 			<div class="flex items-center gap-3">
 				<h1 class="truncate text-2xl font-bold text-foreground">{client.naam}</h1>

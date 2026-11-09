@@ -8,7 +8,9 @@
 	import { BEWUSTZIJN_KLEUR, bewustzijnVan } from '$lib/trigger-map';
 	import { saver, postJSON } from '$lib/saver.svelte';
 	import type { Concept } from '$lib/supabase/database.types';
-	import { SCRIPT_BEATS, type Script } from '$lib/productie';
+	import { SCRIPT_BEATS, ADVERTENTIE_VELDEN, normAdvertentie, type Script, type Advertentie } from '$lib/productie';
+	import { page } from '$app/state';
+	import FileStack from '@lucide/svelte/icons/files';
 	import { briefSecties, briefNaarMarkdown, type Brief } from '$lib/sprint';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
@@ -30,7 +32,8 @@
 			probleem: String(s.probleem ?? ''),
 			oplossing: String(s.oplossing ?? ''),
 			resultaat: String(s.resultaat ?? ''),
-			cta: String(s.cta ?? '')
+			cta: String(s.cta ?? ''),
+			advertentie: normAdvertentie(s.advertentie)
 		};
 	}
 	type Rij = Concept & { _script: Script };
@@ -43,6 +46,8 @@
 
 	let bezig = $state<Record<string, boolean>>({});
 	let bezigBrief = $state<Record<string, boolean>>({});
+	let bezigAd = $state<Record<string, boolean>>({});
+	const base = $derived(`/klanten/${page.params.id}`);
 	let gekopieerd = $state<Record<string, boolean>>({});
 	let fout = $state<string | null>(null);
 
@@ -114,6 +119,34 @@
 		}
 	}
 
+	async function genAd(c: Rij) {
+		bezigAd[c.id] = true;
+		fout = null;
+		try {
+			const { advertentie } = await postJSON<{ advertentie: Advertentie }>(
+				'/api/concepts',
+				{ type: 'advertentie_gen', id: c.id },
+				{ taak: 'Advertentietekst schrijven' }
+			);
+			c._script.advertentie = normAdvertentie(advertentie);
+		} catch (e) {
+			fout = leesFout(e, 'Advertentietekst schrijven mislukt');
+		} finally {
+			bezigAd[c.id] = false;
+		}
+	}
+	// De server geeft fouten als JSON ({"message": "..."}) terug; toon alleen de tekst.
+	function leesFout(e: unknown, standaard: string): string {
+		const ruw = e instanceof Error ? e.message : standaard;
+		try {
+			const j = JSON.parse(ruw);
+			if (j?.message) return String(j.message);
+		} catch {
+			// geen JSON
+		}
+		return ruw;
+	}
+
 	function dims(c: Rij): string {
 		return [c.aanbod, c.format, c.creator_type].filter(Boolean).join(' · ');
 	}
@@ -132,6 +165,13 @@
 				script, met referentie en props — klaar om te briefen aan de designers.
 			</p>
 		</div>
+		<div class="flex items-center gap-3">
+			<a
+				href="{base}/pakket"
+				class="inline-flex items-center gap-2 rounded-full bg-brand-green px-4 py-2 text-[13px] font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#00432E] motion-reduce:hover:translate-y-0"
+			>
+				<FileStack class="size-4" /> Briefing-pakket
+			</a>
 		<div class="flex items-center gap-1.5 text-xs">
 			{#if saver.fout}
 				<TriangleAlert class="size-3.5 text-destructive" /><span class="text-destructive">Opslaan mislukt</span>
@@ -140,6 +180,7 @@
 			{:else if saver.laatstOpgeslagen}
 				<Check class="size-3.5 text-brand-green" /><span class="text-muted-foreground">Opgeslagen</span>
 			{/if}
+		</div>
 		</div>
 	</div>
 
@@ -224,6 +265,38 @@
 								/>
 							</div>
 						{/each}
+					</div>
+
+					<!-- Advertentietekst -->
+					<div class="rounded-md border bg-muted/20 p-3">
+						<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+							<span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								<FileText class="size-3.5" /> Advertentietekst
+							</span>
+							<Button variant="outline" size="sm" onclick={() => genAd(c)} disabled={bezigAd[c.id]}>
+								{#if bezigAd[c.id]}<LoaderCircle class="size-4 animate-spin" /> Schrijven…{:else}<Sparkles class="size-4" /> {c._script.advertentie?.primair ? 'Opnieuw' : 'Genereer tekst'}{/if}
+							</Button>
+						</div>
+						<div class="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
+							{#each ADVERTENTIE_VELDEN as v (v.key)}
+								{@const waarde = c._script.advertentie?.[v.key] ?? ''}
+								<div class="space-y-1">
+									<div class="flex items-baseline justify-between gap-2">
+										<span class="text-xs font-semibold text-muted-foreground">{v.label}</span>
+										<span class={cn('text-[11px] tabular-nums', waarde.length > v.max ? 'font-semibold text-brand-orange' : 'text-muted-foreground')} title="Adviesgrens: langere tekst wordt in de feed afgekapt">{waarde.length}/{v.max}</span>
+									</div>
+									{#if c._script.advertentie}
+										<Textarea
+											bind:value={c._script.advertentie[v.key]}
+											onblur={() => saveScript(c)}
+											rows={v.rijen}
+											placeholder={v.hint}
+											class="text-sm"
+										/>
+									{/if}
+								</div>
+							{/each}
+						</div>
 					</div>
 
 					<!-- Referentie + props -->

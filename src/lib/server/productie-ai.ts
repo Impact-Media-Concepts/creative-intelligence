@@ -1,5 +1,5 @@
 import { claudeJSON } from './claude';
-import type { Script } from '$lib/productie';
+import type { Script, Advertentie } from '$lib/productie';
 import { bewustzijnVan } from '$lib/trigger-map';
 
 const SCHEMA = {
@@ -64,4 +64,85 @@ export async function genereerScript(concept: ScriptConcept, tm: TmContext) {
 		`- Taal doelgroep: ${lijst(tm.taal_doelgroep)}`;
 
 	return claudeJSON<Script>(SYSTEM, prompt, SCHEMA, 1500, 'low');
+}
+
+const AD_SCHEMA = {
+	type: 'object',
+	additionalProperties: false,
+	properties: {
+		primair: { type: 'string' },
+		kop: { type: 'string' },
+		omschrijving: { type: 'string' }
+	},
+	required: ['primair', 'kop', 'omschrijving']
+};
+
+const AD_SYSTEM = `Je bent een copywriter voor Meta-advertenties (Facebook/Instagram feed en stories) bij een Social Ads bureau. Je schrijft de advertentietekst bij één creative-concept.
+
+Geef UITSLUITEND JSON: {"primair":"...","kop":"...","omschrijving":"..."}
+
+- "primair": de primaire tekst boven de creative. De EERSTE regel moet de scroll stoppen en wordt in de feed als enige getoond voordat 'Meer tonen' verschijnt — houd die ±125 tekens. Totaal maximaal ±300 tekens, korte regels, regelovergangen mogen.
+- "kop": de vetgedrukte kop naast de knop, maximaal 40 tekens.
+- "omschrijving": optionele regel onder de kop, maximaal 30 tekens; laat leeg ("") als die niets toevoegt.
+
+Regels:
+- Schrijf in het Nederlands, in de taal van de doelgroep, en sluit aan op de invalshoek, de hook en het script van het concept.
+- De bewustzijnsfase bepaalt de taak van de tekst (Onbewust: vertel een verhaal; Probleembewust: benoem de pijn; Oplossingsbewust: jouw aanpak vs. de rest; Productbewust: bewijs en bezwaren; Meest bewust: prijs en deadline). Houd je daaraan: vóór Oplossingsbewust géén product, USP's of aanbod.
+- VERZIN NOOIT feiten, cijfers, kortingen, testresultaten of claims die niet in de aangeleverde data staan.
+- De call-to-action-knop staat er al; herhaal die niet als "klik hier". Spaarzaam met uitroeptekens en emoji (hooguit één).`;
+
+/** Schrijft de advertentietekst (primair/kop/omschrijving) bij één concept. */
+export async function genereerAdvertentie(
+	concept: ScriptConcept & { script?: unknown },
+	tm: TmContext
+) {
+	const lijst = (v?: string[]) => (v && v.length ? v.join('; ') : '—');
+	const s = (concept.script && typeof concept.script === 'object' ? concept.script : {}) as Record<string, unknown>;
+	const beat = (k: string) => (s[k] ? String(s[k]) : '');
+	const fase = concept.funnelfase || concept.awareness ? bewustzijnVan(concept) : '—';
+	const prompt =
+		`Schrijf de advertentietekst voor dit concept:
+` +
+		`- Bewustzijnsfase: ${fase}
+` +
+		`- Aanbod: ${concept.aanbod || '—'}
+` +
+		`- Invalshoek: ${concept.invalshoek || '—'}
+` +
+		`- Format: ${concept.format || '—'} · Structuur: ${concept.structuur || '—'} · Creator: ${concept.creator_type || '—'}
+` +
+		`- Hook (concept): ${concept.hook || '—'}
+` +
+		`- CTA-knop: ${concept.cta || '—'}
+` +
+		`- Hypothese: ${concept.hypothese || '—'}
+` +
+		(beat('hook') || beat('probleem') || beat('oplossing')
+			? `
+Script van de creative:
+- Hook: ${beat('hook') || '—'}
+- Probleem: ${beat('probleem') || '—'}
+- Oplossing: ${beat('oplossing') || '—'}
+- Resultaat: ${beat('resultaat') || '—'}
+`
+			: '') +
+		`
+Context uit de trigger map:
+` +
+		`- Pijnpunten: ${lijst(tm.pijnpunten)}
+` +
+		`- Wensen: ${lijst(tm.wensen)}
+` +
+		`- Bezwaren: ${lijst(tm.bezwaren)}
+` +
+		`- Taal doelgroep: ${lijst(tm.taal_doelgroep)}`;
+
+	const res = await claudeJSON<Partial<Advertentie>>(AD_SYSTEM, prompt, AD_SCHEMA, 1500, 'low');
+	// De proxy dwingt het schema niet af → valideren en begrenzen.
+	const advertentie: Advertentie = {
+		primair: String(res.data.primair ?? '').trim().slice(0, 700),
+		kop: String(res.data.kop ?? '').trim().slice(0, 120),
+		omschrijving: String(res.data.omschrijving ?? '').trim().slice(0, 90)
+	};
+	return { ...res, advertentie };
 }

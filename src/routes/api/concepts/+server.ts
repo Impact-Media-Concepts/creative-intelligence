@@ -3,7 +3,8 @@ import type { RequestHandler } from './$types';
 import type { Database } from '$lib/supabase/database.types';
 import { FUNNELFASES, PRIORITEITEN, CONCEPT_STATUSSEN } from '$lib/matrix';
 import { genereerMatrix } from '$lib/server/matrix-ai';
-import { genereerScript } from '$lib/server/productie-ai';
+import { genereerScript, genereerAdvertentie } from '$lib/server/productie-ai';
+import { normAdvertentie } from '$lib/productie';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 import { afgeleidePrioriteit, bewustzijnVan, type InvalshoekScore } from '$lib/trigger-map';
 
@@ -15,13 +16,16 @@ export const config = { maxDuration: 300 };
 const TEKST_VELDEN = ['invalshoek', 'aanbod', 'format', 'structuur', 'creator_type', 'hook', 'cta', 'awareness', 'hypothese', 'variabele', 'onderbouwing', 'referentie', 'props'];
 
 const SCRIPT_KEYS = ['hook', 'probleem', 'oplossing', 'resultaat', 'cta'] as const;
-function schoonScript(v: unknown): Record<string, string> {
-	const uit: Record<string, string> = {};
+function schoonScript(v: unknown): Record<string, unknown> {
+	const uit: Record<string, unknown> = {};
 	if (v && typeof v === 'object') {
 		for (const k of SCRIPT_KEYS) {
 			const val = (v as Record<string, unknown>)[k];
 			uit[k] = val == null ? '' : String(val);
 		}
+		// De advertentietekst leeft in hetzelfde JSON-veld en mag nooit stilletjes verdwijnen.
+		const ad = (v as Record<string, unknown>).advertentie;
+		if (ad && typeof ad === 'object') uit.advertentie = normAdvertentie(ad);
 	}
 	return uit;
 }
@@ -401,9 +405,15 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					bezwaren: (tm?.bezwaren as string[]) ?? [],
 					taal_doelgroep: (tm?.taal_doelgroep as string[]) ?? []
 				});
+				// Alleen de 5 beats worden opnieuw geschreven; een bestaande advertentietekst blijft staan.
+				const bestaandAd = (concept.script as { advertentie?: unknown } | null)?.advertentie;
+				const samengevoegd = {
+					...res.data,
+					...(bestaandAd ? { advertentie: normAdvertentie(bestaandAd) } : {})
+				};
 				await supabase
 					.from('concepts')
-					.update({ script: res.data as never })
+					.update({ script: samengevoegd as never })
 					.eq('id', id);
 				await supabase.from('ai_logs').insert({
 					client_id: concept.client_id,
@@ -416,7 +426,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					tokens_output: res.tokensOutput,
 					duur_ms: res.duurMs
 				});
-				return json({ script: res.data });
+				return json({ script: samengevoegd });
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : 'onbekende fout';
 				await supabase.from('ai_logs').insert({
@@ -427,6 +437,60 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					response: 'FOUT: ' + msg
 				});
 				error(500, 'Script genereren mislukt: ' + msg);
+			}
+			break;
+		}
+
+		// Creatie: advertentietekst (primaire tekst, kop, omschrijving) laten schrijven.
+		case 'advertentie_gen': {
+			const id = String(body.id ?? '');
+			if (!id) error(400, 'Ontbrekend id');
+			const { data: concept } = await supabase.from('concepts').select('*').eq('id', id).single();
+			if (!concept) error(404, 'Concept niet gevonden');
+
+			const { data: tm } = await supabase
+				.from('trigger_map_versions')
+				.select('pijnpunten, wensen, bezwaren, taal_doelgroep')
+				.eq('client_id', concept.client_id)
+				.eq('is_actief', true)
+				.maybeSingle();
+
+			try {
+				const res = await genereerAdvertentie(concept, {
+					pijnpunten: (tm?.pijnpunten as string[]) ?? [],
+					wensen: (tm?.wensen as string[]) ?? [],
+					bezwaren: (tm?.bezwaren as string[]) ?? [],
+					taal_doelgroep: (tm?.taal_doelgroep as string[]) ?? []
+				});
+				// Alleen de advertentietekst wijzigt; de beats van het script blijven staan.
+				const huidig = schoonScript(concept.script);
+				const nieuw = { ...huidig, advertentie: res.advertentie };
+				await supabase
+					.from('concepts')
+					.update({ script: nieuw as never })
+					.eq('id', id);
+				await supabase.from('ai_logs').insert({
+					client_id: concept.client_id,
+					gebruiker_id: user.id,
+					module: 'advertentie',
+					model: res.model,
+					prompt: res.prompt,
+					response: res.response,
+					tokens_input: res.tokensInput,
+					tokens_output: res.tokensOutput,
+					duur_ms: res.duurMs
+				});
+				return json({ advertentie: res.advertentie });
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : 'onbekende fout';
+				await supabase.from('ai_logs').insert({
+					client_id: concept.client_id,
+					gebruiker_id: user.id,
+					module: 'advertentie',
+					model: CLAUDE_MODEL,
+					response: 'FOUT: ' + msg
+				});
+				error(500, 'Advertentietekst schrijven mislukt: ' + msg);
 			}
 			break;
 		}
