@@ -61,6 +61,7 @@
 	let rasterFases = $state<Bewustzijn[]>([]);
 	let cellen = $state<Cel[] | null>(null);
 	let toegevoegd = $state<number | null>(null);
+	let gescoord = $state(0);
 	let bezigToevoegen = $state(false);
 
 	const sleutel = (r: Rij) => `${r.type}:${r.tekst}`;
@@ -125,12 +126,13 @@
 					onderbouwing: c.onderbouwing,
 					bewustzijn: c.fase
 				}));
-			const res = await postJSON<{ toegevoegd: number }>(
+			const res = await postJSON<{ toegevoegd: number; gescoord?: number }>(
 				'/api/trigger-map',
-				{ type: 'invalshoeken_toevoegen', versieId, nieuw },
+				{ type: 'invalshoeken_toevoegen', versieId, clientId, nieuw },
 				{ taak: 'Invalshoeken toevoegen', ververs: true }
 			);
 			toegevoegd = res.toegevoegd;
+			gescoord = res.gescoord ?? 0;
 			cellen = null;
 			onToegevoegd?.();
 		} catch (e) {
@@ -171,8 +173,16 @@
 				{toegevoegd} {toegevoegd === 1 ? 'invalshoek' : 'invalshoeken'} toegevoegd — ze staan nu hierboven.
 			</span>
 			<span class="text-[13px] text-brand-green">
-				Nog geen score: stel die voor via
-				<a href="{base}/matrix" class="font-semibold underline">Scores opnieuw voorstellen</a> in de matrix.
+				{#if gescoord >= (toegevoegd ?? 0) && gescoord > 0}
+					Score is voorgesteld — controleer die in de
+					<a href="{base}/matrix" class="font-semibold underline">matrix</a>.
+				{:else if gescoord > 0}
+					Voor {gescoord} is een score voorgesteld; de rest kun je voorstellen via
+					<a href="{base}/matrix" class="font-semibold underline">Scores opnieuw voorstellen</a>.
+				{:else}
+					Geen score kunnen voorstellen: doe dat via
+					<a href="{base}/matrix" class="font-semibold underline">Scores opnieuw voorstellen</a> in de matrix.
+				{/if}
 			</span>
 		</div>
 	{/if}

@@ -71,6 +71,11 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-09 — Automatische scorevoorstel voor nieuwe invalshoeken
+- **Wat:** invalshoeken die je via het angle-raster toevoegt krijgen meteen een RICE-light **voorstel** (zelfde scorekaart als "Scores opnieuw voorstellen"), alleen voor de nieuwe; bestaande scores blijven onaangeroerd. Mislukt de AI-stap, dan staan ze er gewoon in zonder score (geen blokkade) en wijst de melding naar de matrix. Het scoren gebeurt na het opslaan; de scores worden daarna op naam bij de nieuwe invalshoeken gezet na opnieuw lezen (geen overschrijven van tussentijdse wijzigingen).
+- **Bestanden:** `src/routes/api/trigger-map/+server.ts` (case `invalshoeken_toevoegen`, antwoord bevat nu `gescoord`), `src/lib/components/app/AngleRaster.svelte` (stuurt `clientId` mee, melding "Score is voorgesteld — controleer die in de matrix").
+- **Verificatie:** typecheck 0 fouten; op de testklant één testinvalshoek toegevoegd: `gescoord: 1` in 6 s, score opgeslagen met eerlijke toelichting (bewijskracht Laag bij onderbouwing "Test"). Die testinvalshoek ("TEST auto-score: …", Oplossingsbewust) staat nog in de testklant en kan worden gearchiveerd.
+
 ### 2026-11-09 — Ad Library: formaat en bereik
 - **Wat:** de Ad Library-scan haalt nu ook het formaat op (twee lichte extra zoekopdrachten met de `media_type`-filter VIDEO en IMAGE; ads in beide of geen van beide blijven "onbekend", bv. carousel/meme) en het door Meta **geschatte EU-bereik** (`eu_total_reach`) per ad. De samenvatting bevat `formaten` en `totaalBereik`; de AI noemt alleen wat in de data staat en benoemt bereik als schatting. Mislukt de formaat-opvraag, dan werkt de rest van de scan gewoon door.
 - **Bestanden:** `src/lib/server/meta/ad-library.ts`, `src/lib/ad-library-analyse.ts`, `src/lib/server/ad-library-ai.ts`, intake-endpoint en -tekst.

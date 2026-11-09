@@ -249,11 +249,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			// gearchiveerde invalshoeken en scores nooit verloren gaan). Dubbele namen worden overgeslagen.
 			const versieId = String(body.versieId ?? '');
 			if (!versieId) error(400, 'Ontbrekend id');
+			const clientId = String(body.clientId ?? '');
 			const nieuw = (Array.isArray(body.nieuw) ? body.nieuw : []).slice(0, 30);
 
 			const { data: versie } = await supabase
 				.from('trigger_map_versions')
-				.select('invalshoeken')
+				.select('invalshoeken, pijnpunten, wensen, bezwaren, kansen_vs_concurrenten, personas')
 				.eq('id', versieId)
 				.maybeSingle();
 			if (!versie) error(404, 'Versie niet gevonden');
@@ -278,14 +279,66 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					gearchiveerd: false
 				});
 			}
-			if (toe.length === 0) return json({ toegevoegd: 0, overgeslagen: (nieuw as unknown[]).length });
+			if (toe.length === 0) return json({ toegevoegd: 0, overgeslagen: (nieuw as unknown[]).length, gescoord: 0 });
 
 			const { error: dbFout } = await supabase
 				.from('trigger_map_versions')
 				.update({ invalshoeken: [...bestaand, ...toe] } as never)
 				.eq('id', versieId);
 			if (dbFout) error(500, dbFout.message);
-			return json({ toegevoegd: toe.length, overgeslagen: (nieuw as unknown[]).length - toe.length });
+
+			// Direct een score VOORSTELLEN voor alleen de nieuwe invalshoeken (de bestaande scores blijven
+			// ongemoeid). Mislukt dit, dan staan de invalshoeken er gewoon in zonder score: nooit een blokkade.
+			let gescoord = 0;
+			try {
+				const res = await genereerInvalshoekScores({
+					invalshoeken: toe.map((i) => ({
+						naam: i.naam as string,
+						omschrijving: i.omschrijving as string,
+						onderbouwing: i.onderbouwing as string,
+						bewustzijn: i.bewustzijn as string
+					})),
+					personas: (versie.personas as Array<Record<string, unknown>> | null) ?? [],
+					pijnpunten: (versie.pijnpunten as string[]) ?? [],
+					wensen: (versie.wensen as string[]) ?? [],
+					bezwaren: (versie.bezwaren as string[]) ?? [],
+					kansen_vs_concurrenten: (versie.kansen_vs_concurrenten as string[]) ?? []
+				});
+				if (clientId) {
+					await supabase.from('ai_logs').insert({
+						client_id: clientId,
+						gebruiker_id: user.id,
+						module: 'scorekaart',
+						model: res.model,
+						prompt: res.prompt,
+						response: res.response,
+						tokens_input: res.tokensInput,
+						tokens_output: res.tokensOutput,
+						duur_ms: res.duurMs
+					});
+				}
+				const schoonNaam = (v: unknown) => String(v ?? '').replace(/^\s*\[[^\]]*\]\s*/, '').trim().toLowerCase();
+				const perNaam = new Map(res.data.scores.map((sc) => [schoonNaam(sc.naam), sc]));
+				const nieuweNamen = new Set(toe.map((i) => norm(i.naam)));
+
+				// Opnieuw lezen en alleen de nieuwe, nog ongescoorde invalshoeken aanvullen (geen race met andere wijzigingen).
+				const { data: vers } = await supabase.from('trigger_map_versions').select('invalshoeken').eq('id', versieId).maybeSingle();
+				const huidig = (vers?.invalshoeken as Array<Record<string, unknown>> | null) ?? [];
+				const bijgewerkt = huidig.map((i) => {
+					if (!nieuweNamen.has(norm(i.naam)) || i.score) return i;
+					const sc = perNaam.get(schoonNaam(i.naam));
+					if (!sc) return i;
+					gescoord++;
+					return { ...i, score: { bereik: sc.bereik, impact: sc.impact, bewijskracht: sc.bewijskracht, effort: sc.effort, toelichting: sc.toelichting } };
+				});
+				if (gescoord > 0) {
+					const { error: scoreFout } = await supabase.from('trigger_map_versions').update({ invalshoeken: bijgewerkt } as never).eq('id', versieId);
+					if (scoreFout) gescoord = 0;
+				}
+			} catch {
+				gescoord = 0;
+			}
+			return json({ toegevoegd: toe.length, overgeslagen: (nieuw as unknown[]).length - toe.length, gescoord });
 		}
 
 		case 'personas': {
