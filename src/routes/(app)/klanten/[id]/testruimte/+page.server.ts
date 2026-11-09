@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 	const [tm, concepten] = await Promise.all([
 		supabase
 			.from('trigger_map_versions')
-			.select('invalshoeken')
+			.select('id, invalshoeken, pijnpunten, wensen, bezwaren')
 			.eq('client_id', id)
 			.eq('is_actief', true)
 			.maybeSingle(),
@@ -26,5 +26,20 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		)
 	];
 
-	return { invalshoeken, aanbodOpties, heeftTriggerMap: !!tm.data };
+	// Signalen uit de actieve trigger map: de "verlangens" (rijen) van het angle-raster.
+	const lijst = (v: unknown) =>
+		((v as string[] | null) ?? []).map((x) => String(x).trim()).filter(Boolean);
+	const signalen = {
+		pijnpunten: lijst(tm.data?.pijnpunten),
+		wensen: lijst(tm.data?.wensen),
+		bezwaren: lijst(tm.data?.bezwaren)
+	};
+
+	return {
+		invalshoeken,
+		aanbodOpties,
+		heeftTriggerMap: !!tm.data,
+		versieId: tm.data?.id ?? null,
+		signalen
+	};
 };

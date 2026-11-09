@@ -71,6 +71,14 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-09 — Angle-raster: verlangen × bewustzijnsfase → invalshoeken (Testruimte)
+- **Wat:** in de Testruimte, onder de invalshoeken, de knop "Nieuwe invalshoeken bedenken". Stap 1: kies tot 6 verlangens (pijnpunten/wensen/bezwaren uit de actieve trigger map). Stap 2: kies bewustzijnsfases (standaard Probleem-/Oplossings-/Productbewust). De AI stelt per vak één invalshoek voor (leeg vak toegestaan: "Geen sterke hoek"); jij vinkt aan/past namen aan en voegt toe. Idee uit de Meta-video (Life-Force 8 × 5 stages = 40 angles), maar met de échte signalen van de klant als rijen i.p.v. de generieke acht.
+- **Bouw:** `src/lib/server/angle-grid-ai.ts` (prompt + validatie/normalisatie, max 1 per vak), `src/lib/components/app/AngleRaster.svelte`, API `/api/trigger-map` types `raster` (genereren, slaat niets op, logt in `ai_logs` module `raster`) en `invalshoeken_toevoegen` (server-side samenvoegen: gearchiveerde invalshoeken en scores blijven behouden, dubbele namen overgeslagen). Testruimte-loader levert `versieId` + `signalen`.
+- **Kwaliteit/guardrail:** eerste versie verzon bewijs ("na 50 wasbeurten", "getest") in Productbewust → prompt-regel "verzin nooit feiten; bewijs alleen uit de data, anders vak leeg"; daarna beschrijven Productbewust-voorstellen wat er te zíen is. Restrisico: sommige 'klantuitspraken' zijn parafrases — strateeg blijft controleren.
+- **Kleinigheid:** RICE-score op chips/startset afgerond (was `2.6666666666666665`).
+- **Verificatie:** typecheck 0 fouten; op testklant: 3 verlangens × 3 fases → 9 voorstellen (2×, ~1-2 min), 3 toegevoegd → backlog 11→14, bestaande scores intact (11), nieuwe 3 'niet gescoord'. Nieuwe invalshoeken krijgen nog geen score: via "Scores opnieuw voorstellen" in de matrix.
+- **Migratie:** geen.
+
 ### 2026-11-09 — Trigger Map in Focusmodus (één sectie tegelijk)
 - **Wat:** Trigger Map-pagina herbouwd volgens het Focusmodus-ontwerp: emerald samenvatting-hero (één zin uit eerste wens + pijnpunt + bezwaar, met voortgangsring = aandeel secties met ≥3 signalen, persona's ≥1), sectie-rail met mini-balkjes, één sectie tegelijk bewerken (deeplink `?sectie=…`), signalen als rijen met inline bewerken + enter-om-toe-te-voegen, persona's als kaarten met Wil/Twijfelt-pills (meegroeiend), navigatie Terug/Volgende en aan het eind "Naar de testruimte". Nieuwe componenten in `src/lib/components/app/triggermap/` (`SamenvattingHero`, `SectieRail`). Opslaglogica (autosave, versies, opnieuw genereren, oude versie alleen-lezen) ongewijzigd.
 - **Bewust weggelaten:** bron-labels per signaal en AI-suggestie-chips uit het ontwerp — die data bestaat nog niet (signalen zijn platte strings). Kandidaat voor later (bron-tracking in de intake-parser).

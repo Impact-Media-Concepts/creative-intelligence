@@ -19,6 +19,7 @@
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import Minus from '@lucide/svelte/icons/minus';
+	import AngleRaster from '$lib/components/app/AngleRaster.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	let { data } = $props();
@@ -70,6 +71,7 @@
 	let bezigAI = $state(false);
 	let fout = $state<string | null>(null);
 	let resultAantal = $state<number | null>(null);
+	let toonRaster = $state(false);
 
 	const angles = $derived(data.invalshoeken as Invalshoek[]);
 	function angleByName(naam: string): Invalshoek | undefined {
@@ -195,6 +197,8 @@
 		}
 	}
 
+	// RICE-scores zijn breuken (bv. 8/3): toon max. 1 decimaal, zonder overbodige ".0".
+	const score1 = (n: number) => String(Math.round(n * 10) / 10);
 	const eyebrow = 'text-[11px] font-bold uppercase tracking-[0.14em]';
 	const kaart = 'rounded-[26px] border bg-card';
 	const lift = 'transition-all duration-[160ms] ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(0,87,60,0.12)] motion-reduce:transition-none motion-reduce:hover:translate-y-0';
@@ -330,7 +334,7 @@
 									{/if}
 									{o || '(naamloos)'}
 									{#if inv?.score}
-										<span class={cn('text-[11px] font-semibold', aan ? 'text-sidebar-primary' : 'text-muted-foreground/70')}>{riceScore(inv.score)}</span>
+										<span class={cn('text-[11px] font-semibold', aan ? 'text-sidebar-primary' : 'text-muted-foreground/70')}>{score1(riceScore(inv.score))}</span>
 									{/if}
 								</button>
 							{/each}
@@ -345,6 +349,27 @@
 								class="w-[120px] rounded-full border border-dashed border-[#C6D5CC] bg-[#FAFCFB] px-3.5 py-2 text-[13px] outline-none transition-all placeholder:text-muted-foreground/70 focus:w-[180px] focus:border-solid focus:border-brand-action focus:ring-[3px] focus:ring-brand-action/25"
 							/>
 						</div>
+
+						{#if d.key === 'angle' && data.versieId}
+							{#if toonRaster}
+								<AngleRaster
+									versieId={data.versieId}
+									{clientId}
+									signalen={data.signalen}
+									{base}
+									onSluiten={() => (toonRaster = false)}
+								/>
+							{:else}
+								<button
+									type="button"
+									class="mt-3.5 inline-flex items-center gap-2 rounded-full border border-[#D6ECE2] bg-[#EAF5EF] px-4 py-2 text-[13px] font-semibold text-brand-green transition-all hover:-translate-y-0.5 hover:border-brand-action motion-reduce:hover:translate-y-0"
+									onclick={() => (toonRaster = true)}
+								>
+									<Sparkles class="size-4 fill-brand-action text-brand-action" />
+									Nieuwe invalshoeken bedenken
+								</button>
+							{/if}
+						{/if}
 					</div>
 				{/each}
 
@@ -427,7 +452,7 @@
 									<span class="block truncate text-xs text-muted-foreground">{c.aanbod} · {c.creator}</span>
 								</span>
 								<span class="flex shrink-0 flex-col items-end gap-1">
-									<span class="text-xs font-bold text-brand-green">{c.score}</span>
+									<span class="text-xs font-bold text-brand-green">{score1(c.score)}</span>
 									<span class="block h-1 w-11 rounded-full bg-muted"><span class="block h-1 rounded-full bg-brand-action" style="width:{(c.score / maxScore) * 100}%"></span></span>
 								</span>
 							</div>

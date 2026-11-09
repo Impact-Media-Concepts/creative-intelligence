@@ -6,9 +6,11 @@ import {
 	SCORE_NIVEAUS,
 	BEWUSTZIJN_LABELS,
 	bewustzijnVan,
+	normaliseerBewustzijn,
 	funnelUitBewustzijn
 } from '$lib/trigger-map';
 import { genereerInvalshoekScores } from '$lib/server/scoring-ai';
+import { genereerAngleRaster, type RasterRij } from '$lib/server/angle-grid-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 
 // AI-scoring van de invalshoeken; ruimere Vercel-functietimeout.
@@ -172,6 +174,118 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				error(500, 'Scores voorstellen mislukt: ' + msg);
 			}
 			break;
+		}
+
+		case 'raster': {
+			// Angle-raster: per verlangen × bewustzijnsfase een invalshoek laten voorstellen (voorstel, nog niets opgeslagen).
+			const clientId = String(body.clientId ?? '');
+			const versieId = String(body.versieId ?? '');
+			if (!clientId || !versieId) error(400, 'Ongeldig verzoek');
+
+			const TYPES = ['Pijnpunt', 'Wens', 'Bezwaar'];
+			const rijen: RasterRij[] = (Array.isArray(body.rijen) ? body.rijen : [])
+				.map((r: Record<string, unknown>) => ({ type: String(r?.type ?? ''), tekst: String(r?.tekst ?? '').trim() }))
+				.filter((r: { type: string; tekst: string }) => TYPES.includes(r.type) && r.tekst)
+				.slice(0, 6) as RasterRij[];
+			const fases = [
+				...new Set(
+					(Array.isArray(body.fases) ? body.fases : [])
+						.map((f: unknown) => normaliseerBewustzijn(f))
+						.filter(Boolean)
+				)
+			] as import('$lib/trigger-map').Bewustzijn[];
+			if (rijen.length === 0) error(400, 'Kies minstens één verlangen.');
+			if (fases.length === 0) error(400, 'Kies minstens één bewustzijnsfase.');
+
+			const { data: versie } = await supabase
+				.from('trigger_map_versions')
+				.select('taal_doelgroep, kansen_vs_concurrenten, personas, invalshoeken')
+				.eq('id', versieId)
+				.maybeSingle();
+			if (!versie) error(404, 'Versie niet gevonden');
+
+			type Inv = Record<string, unknown>;
+			const bestaand = ((versie.invalshoeken as Inv[] | null) ?? [])
+				.filter((i) => !i.gearchiveerd)
+				.map((i) => String(i.naam ?? ''))
+				.filter(Boolean);
+
+			try {
+				const res = await genereerAngleRaster({
+					rijen,
+					fases,
+					bestaand,
+					personas: (versie.personas as Array<{ naam?: string; omschrijving?: string; kernbehoefte?: string; kernbezwaar?: string }> | null) ?? [],
+					taal_doelgroep: (versie.taal_doelgroep as string[] | null) ?? [],
+					kansen_vs_concurrenten: (versie.kansen_vs_concurrenten as string[] | null) ?? []
+				});
+				await supabase.from('ai_logs').insert({
+					client_id: clientId,
+					gebruiker_id: user.id,
+					module: 'raster',
+					model: res.model,
+					prompt: res.prompt,
+					response: res.response,
+					tokens_input: res.tokensInput,
+					tokens_output: res.tokensOutput,
+					duur_ms: res.duurMs
+				});
+				return json({ cellen: res.cellen });
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : 'onbekende fout';
+				await supabase.from('ai_logs').insert({
+					client_id: clientId,
+					gebruiker_id: user.id,
+					module: 'raster',
+					model: CLAUDE_MODEL,
+					response: 'FOUT: ' + msg
+				});
+				error(500, 'Raster maken mislukt: ' + msg);
+			}
+		}
+
+		case 'invalshoeken_toevoegen': {
+			// Voegt nieuwe invalshoeken TOE aan de bestaande lijst (server-side samenvoegen, zodat
+			// gearchiveerde invalshoeken en scores nooit verloren gaan). Dubbele namen worden overgeslagen.
+			const versieId = String(body.versieId ?? '');
+			if (!versieId) error(400, 'Ontbrekend id');
+			const nieuw = (Array.isArray(body.nieuw) ? body.nieuw : []).slice(0, 30);
+
+			const { data: versie } = await supabase
+				.from('trigger_map_versions')
+				.select('invalshoeken')
+				.eq('id', versieId)
+				.maybeSingle();
+			if (!versie) error(404, 'Versie niet gevonden');
+
+			const bestaand = (versie.invalshoeken as Array<Record<string, unknown>> | null) ?? [];
+			const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
+			const namen = new Set(bestaand.map((i) => norm(i.naam)));
+
+			const toe: Array<Record<string, unknown>> = [];
+			for (const x of nieuw as Array<Record<string, unknown>>) {
+				const naam = String(x?.naam ?? '').trim().slice(0, 160);
+				const bewustzijn = normaliseerBewustzijn(x?.bewustzijn);
+				if (!naam || !bewustzijn || namen.has(norm(naam))) continue;
+				namen.add(norm(naam));
+				toe.push({
+					naam,
+					omschrijving: String(x?.omschrijving ?? '').trim().slice(0, 600),
+					funnelfase: funnelUitBewustzijn(bewustzijn),
+					bewustzijn,
+					onderbouwing: String(x?.onderbouwing ?? '').trim().slice(0, 600),
+					status: 'Nieuw',
+					gearchiveerd: false
+				});
+			}
+			if (toe.length === 0) return json({ toegevoegd: 0, overgeslagen: (nieuw as unknown[]).length });
+
+			const { error: dbFout } = await supabase
+				.from('trigger_map_versions')
+				.update({ invalshoeken: [...bestaand, ...toe] } as never)
+				.eq('id', versieId);
+			if (dbFout) error(500, dbFout.message);
+			return json({ toegevoegd: toe.length, overgeslagen: (nieuw as unknown[]).length - toe.length });
 		}
 
 		case 'personas': {
