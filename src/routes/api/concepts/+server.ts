@@ -5,7 +5,7 @@ import { FUNNELFASES, PRIORITEITEN, CONCEPT_STATUSSEN } from '$lib/matrix';
 import { genereerMatrix } from '$lib/server/matrix-ai';
 import { genereerScript } from '$lib/server/productie-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
-import { afgeleidePrioriteit, type InvalshoekScore } from '$lib/trigger-map';
+import { afgeleidePrioriteit, bewustzijnVan, type InvalshoekScore } from '$lib/trigger-map';
 
 type ConceptInsert = Database['public']['Tables']['concepts']['Insert'];
 
@@ -187,7 +187,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : undefined;
 			const matrixConfig = {
 				personas: strArr(rawCfg.personas),
-				funnelfases: strArr(rawCfg.funnelfases),
+				bewustzijnsfases: strArr(rawCfg.bewustzijnsfases),
 				middelen: strArr(rawCfg.middelen),
 				doelstelling: rawCfg.doelstelling ? String(rawCfg.doelstelling) : undefined,
 				target: rawCfg.target ? String(rawCfg.target) : undefined
@@ -205,7 +205,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			// concepten bouwen voort op winnaars en vermijden ontkrachte invalshoeken.
 			const { data: eerdere } = await supabase
 				.from('concepts')
-				.select('invalshoek, funnelfase, format, structuur, creator_type, is_winnaar, ai_analyse, observatie')
+				.select('invalshoek, funnelfase, awareness, format, structuur, creator_type, is_winnaar, ai_analyse, observatie')
 				.eq('client_id', clientId);
 			const winnaars = (eerdere ?? [])
 				.filter((c) => c.is_winnaar)
@@ -213,7 +213,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					const a = (c.ai_analyse as { wat_werkte?: string; volgende_stap?: string } | null) ?? null;
 					return {
 						invalshoek: c.invalshoek,
-						funnelfase: c.funnelfase,
+						bewustzijn: bewustzijnVan(c),
 						format: c.format,
 						structuur: c.structuur,
 						creator_type: c.creator_type,
@@ -253,6 +253,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 								omschrijving?: string;
 								onderbouwing?: string;
 								funnelfase?: string;
+								bewustzijn?: string;
 								status?: string;
 								gearchiveerd?: boolean;
 								score?: InvalshoekScore;
@@ -261,7 +262,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 							naam: i.naam,
 							omschrijving: i.omschrijving,
 							onderbouwing: i.onderbouwing,
-							funnelfase: i.funnelfase,
+							bewustzijn: bewustzijnVan(i),
 							status: i.status,
 							gearchiveerd: i.gearchiveerd,
 							// Goedgekeurde prioriteit uit de scorekaart (indien gescoord) → leidend in de matrix.

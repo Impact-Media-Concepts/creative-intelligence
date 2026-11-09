@@ -4,7 +4,7 @@ import type { StrategiePlan } from '$lib/testplan';
 /** Sturing van de strateeg (uit de teststrategie-configuratie). */
 export interface StrategieConfig {
 	personas?: string[];
-	funnelfases?: string[];
+	bewustzijnsfases?: string[];
 	middelen?: string[];
 	/** Doelstelling/KPI-focus, bv. "Awareness / engagement" of "Direct rendement (CPA/ROAS)". */
 	doelstelling?: string;
@@ -12,7 +12,7 @@ export interface StrategieConfig {
 	target?: string;
 	/** Max. aantal varianten per schone test (soft cap; default 3). */
 	maxVarianten?: number;
-	/** Mogen sprints uit verschillende funnellagen parallel draaien? */
+	/** Mogen sprints uit verschillende bewustzijnsfases parallel draaien? */
 	parallel?: boolean;
 }
 
@@ -26,7 +26,7 @@ export interface StrategieContext {
 		naam?: string;
 		omschrijving?: string;
 		onderbouwing?: string;
-		funnelfase?: string;
+		bewustzijn?: string;
 		status?: string;
 		gearchiveerd?: boolean;
 		/** Afgeleide prioriteit uit de scorekaart (RICE), indien gescoord. */
@@ -72,35 +72,35 @@ Geef output ALLEEN als valide JSON in dit formaat:
 {
   "samenvatting": "kernstrategie + belangrijkste keuzes en waarom (2-4 zinnen)",
   "doelgroep": "welke persona('s) en waarom (of 'geen specifieke persona')",
-  "funnelaanpak": "welke funnellagen, in welke volgorde, en waarom",
+  "funnelaanpak": "welke bewustzijnsfases, in welke volgorde, en waarom",
   "sprints": [
-    { "titel": "Sprint 1 — ...", "focus": "persona + funnellaag", "concepten": ["invalshoek A", "invalshoek B", "invalshoek C"], "wat_testen": "welke variabele wordt geïsoleerd en waarom", "succescriterium": "meetbaar (drempel + termijn)", "budget": "indicatie", "duur": "bijv. 2 weken", "ronde": 1 }
+    { "titel": "Sprint 1 — ...", "focus": "persona + bewustzijnsfase", "concepten": ["invalshoek A", "invalshoek B", "invalshoek C"], "wat_testen": "welke variabele wordt geïsoleerd en waarom", "succescriterium": "meetbaar (drempel + termijn)", "budget": "indicatie", "duur": "bijv. 2 weken", "ronde": 1 }
   ],
   "aannames": ["aanname 1", "aanname 2"]
 }
 
 METHODE — schoon testen (STRIKT):
 - Testvolgorde is Invalshoek → Format → Structuur → Creator: isoleer per sprint ÉÉN variabele, houd de rest gelijk.
-- Begin per funnellaag met een invalshoek-test die de relevante invalshoeken van die laag tegelijk als varianten draait (variabele = invalshoek). Zet die invalshoeken in "concepten".
-- DATA-GEDREVEN, niet padden: plan alleen tests die de data rechtvaardigt. Passen alle relevante invalshoeken van een laag in één test (≤ max varianten)? Doe dan ÉÉN invalshoek-test en ga daarna door naar de volgende variabele (format/structuur/creator) op de winnaar. Verzin GEEN extra rondes om het plan te vullen.
+- Begin per bewustzijnsfase met een invalshoek-test die de relevante invalshoeken van die fase tegelijk als varianten draait (variabele = invalshoek). Zet die invalshoeken in "concepten". Zijn er in aangrenzende fases maar weinig invalshoeken, combineer ze dan in één test in plaats van vijf losse sprints te plannen.
+- DATA-GEDREVEN, niet padden: plan alleen tests die de data rechtvaardigt. Passen alle relevante invalshoeken van een fase in één test (≤ max varianten)? Doe dan ÉÉN invalshoek-test en ga daarna door naar de volgende variabele (format/structuur/creator) op de winnaar. Verzin GEEN extra rondes om het plan te vullen.
 - Zijn er MEER relevante invalshoeken dan de max varianten per test? Plan dan meerdere invalshoek-rondes (winnaar draagt door → volgende batch) vóór je naar de volgende variabele gaat.
 - Respecteer de "max varianten per test" uit de sturing (default 3 als niet opgegeven).
 
 PARALLEL & RONDES ("ronde"):
 - Geef elke sprint een "ronde"-nummer. Sprints met hetzelfde rondenummer draaien PARALLEL.
-- Als parallel testen is toegestaan: laat sprints uit verschillende funnellagen (bv. TOFU en BOFU) in dezelfde ronde parallel lopen. Vervolgsprints (die op een winnaar voortbouwen) komen in een latere ronde.
+- Als parallel testen is toegestaan: laat sprints uit verschillende bewustzijnsfases (bv. Probleembewust en Productbewust) in dezelfde ronde parallel lopen. Vervolgsprints (die op een winnaar voortbouwen) komen in een latere ronde.
 - Als parallel NIET is toegestaan: geef elke sprint een oplopend, uniek rondenummer (puur sequentieel).
 
-FUNNEL-LOGICA & HERCLASSIFICATIE:
-- TOFU = awareness/pijnpunt/herkenning (geen bewijs/aanbod); MOFU = overweging/USP/vergelijking/SOCIAL PROOF (reviews/ratings/cijfers); BOFU = conversie/aanbod/garantie/urgentie.
-- Staat een invalshoek in een duidelijk VERKEERDE funnelfase (bv. social proof / "X sterren uit Y reviews" / vergelijking in TOFU)? Plaats 'm dan in de JUISTE fase (MOFU/BOFU) en benoem die correctie kort in de samenvatting of aannames.
+BEWUSTZIJNSFASES & HERCLASSIFICATIE:
+- De fase beschrijft wat de persoon al weet en bepaalt de taak van de creative: Onbewust = vertel een verhaal (geen product/bewijs/aanbod); Probleembewust = benoem de pijn; Oplossingsbewust = jouw aanpak versus de rest (USP's, uitleg, vergelijking); Productbewust = bewijs en bezwaren (SOCIAL PROOF: reviews/ratings/cijfers, garanties); Meest bewust = prijs en deadline (aanbod, actie, urgentie).
+- Staat een invalshoek in een duidelijk VERKEERDE fase (bv. social proof / "X sterren uit Y reviews" / vergelijking in Onbewust of Probleembewust)? Plaats 'm dan in de JUISTE fase en benoem die correctie kort in de samenvatting of aannames.
 
 KPI / DOELSTELLING:
-- Vertel altijd een full-funnel verhaal, maar stem de "succescriterium" van elke sprint af op de doelstelling/target uit de sturing.
-- Bij focus op rendement (CPA/ROAS/aankopen/add-to-cart): geef BOFU-sprints een harde resultaat-norm (bv. ROAS/CPA-target) en geef ook TOFU/MOFU een secundaire conversie-guardrail naast de engagement-metric. Bij awareness-focus: engagement/hook rate/CTR leidend. Verwerk een concreet target letterlijk als het is opgegeven.
+- Vertel altijd een verhaal langs alle relevante bewustzijnsfases, maar stem de "succescriterium" van elke sprint af op de doelstelling/target uit de sturing.
+- Bij focus op rendement (CPA/ROAS/aankopen/add-to-cart): geef Productbewust-/Meest-bewust-sprints een harde resultaat-norm (bv. ROAS/CPA-target) en geef ook de eerdere fases (Onbewust t/m Oplossingsbewust) een secundaire conversie-guardrail naast de engagement-metric. Bij awareness-focus: engagement/hook rate/CTR leidend. Verwerk een concreet target letterlijk als het is opgegeven.
 
 REGELS:
-- Respecteer de sturing (persona-scope, funnellagen, beschikbare middelen) STRIKT; kies formats alleen uit de beschikbare middelen.
+- Respecteer de sturing (persona-scope, bewustzijnsfases, beschikbare middelen) STRIKT; kies formats alleen uit de beschikbare middelen.
 - Gebruik de invalshoeken BREED: prioriteer op RICE (high eerst / meer budget) i.p.v. invalshoeken uit te sluiten. Meer persona's = meer sprints/ad sets = meer testing; benoem dat.
 - Bouw voort op bevestigde invalshoeken; stel ontkrachte niet opnieuw voor.
 - Wees concreet en navolgbaar: de strateeg moet je keuzes kunnen controleren. Benoem expliciete "aannames".
@@ -108,14 +108,15 @@ REGELS:
 - Taal: Nederlands. Baseer je op de aangeleverde data — geen aannames verzinnen die niet uit de data volgen.`;
 
 function bouwContext(ctx: StrategieContext, config: StrategieConfig, feedback?: string): string {
-	const funnelScope = config.funnelfases?.length ? new Set(config.funnelfases) : null;
+	const faseScope = config.bewustzijnsfases?.length ? new Set(config.bewustzijnsfases) : null;
 	const inv = (ctx.invalshoeken ?? [])
 		.filter((i) => !i.gearchiveerd)
-		.filter((i) => !funnelScope || funnelScope.has(String(i.funnelfase)));
+		.filter((i) => !faseScope || faseScope.has(String(i.bewustzijn)));
 
 	const sturing: string[] = [];
 	if (config.personas?.length) sturing.push(`Persona-scope: ${config.personas.join('; ')}`);
-	if (config.funnelfases?.length) sturing.push(`Funnellagen: ${config.funnelfases.join(', ')}`);
+	if (config.bewustzijnsfases?.length)
+		sturing.push(`Bewustzijnsfases: ${config.bewustzijnsfases.join(', ')}`);
 	if (config.middelen?.length) sturing.push(`Beschikbare middelen: ${config.middelen.join(', ')}`);
 	if (config.doelstelling) sturing.push(`Doelstelling/KPI-focus: ${config.doelstelling}`);
 	if (config.target?.trim()) sturing.push(`Concreet target: ${config.target.trim()}`);
@@ -125,11 +126,11 @@ function bouwContext(ctx: StrategieContext, config: StrategieConfig, feedback?: 
 	return [
 		sturing.length ? '## Sturing van de strateeg\n' + sturing.join('\n') : '',
 		inv.length
-			? '## Invalshoeken (test-backlog; per funnelfase, met prioriteit)\n' +
+			? '## Invalshoeken (test-backlog; per bewustzijnsfase, met prioriteit)\n' +
 				inv
 					.map(
 						(i) =>
-							`- [${i.funnelfase ?? '?'}] ${i.naam ?? ''}${i.prioriteit ? ` (prioriteit: ${i.prioriteit})` : ''}: ${i.omschrijving ?? ''}` +
+							`- [${i.bewustzijn ?? '?'}] ${i.naam ?? ''}${i.prioriteit ? ` (prioriteit: ${i.prioriteit})` : ''}: ${i.omschrijving ?? ''}` +
 							(i.onderbouwing ? `\n    Onderbouwing: ${i.onderbouwing}` : '')
 					)
 					.join('\n')

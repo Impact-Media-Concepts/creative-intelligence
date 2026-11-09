@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { claudeChat, type ChatBericht } from '$lib/server/claude';
+import { bewustzijnVan } from '$lib/trigger-map';
 
 // Chatbeurt via de proxy; ruimere Vercel-functietimeout.
 export const config = { maxDuration: 300 };
@@ -36,7 +37,7 @@ async function bouwContext(
 				'## Invalshoeken (trigger map)\n' +
 					inv
 						.filter((i) => !i.gearchiveerd)
-						.map((i) => `- [${i.funnelfase ?? '?'}] ${i.naam ?? ''} (${i.status ?? 'Nieuw'})`)
+						.map((i) => `- [${bewustzijnVan(i as { bewustzijn?: string; funnelfase?: string })}] ${i.naam ?? ''} (${i.status ?? 'Nieuw'})`)
 						.join('\n')
 			);
 		const pijn = (tm.pijnpunten as string[] | null) ?? [];
@@ -55,7 +56,7 @@ async function bouwContext(
 	if (onderwerp === 'matrix') {
 		const { data: concepten } = await supabase
 			.from('concepts')
-			.select('funnelfase, invalshoek, format, structuur, creator_type, variabele, prioriteit')
+			.select('funnelfase, awareness, invalshoek, format, structuur, creator_type, variabele, prioriteit')
 			.eq('client_id', clientId)
 			.eq('gearchiveerd', false)
 			.order('created_at', { ascending: true });
@@ -66,7 +67,7 @@ async function bouwContext(
 					lijst
 						.map(
 							(c) =>
-								`- [${c.funnelfase ?? '?'}] ${c.invalshoek ?? ''} — format: ${c.format ?? '?'}, structuur: ${c.structuur ?? '?'}, creator: ${c.creator_type ?? '?'}, test: ${c.variabele ?? '?'}, prioriteit: ${c.prioriteit ?? '?'}`
+								`- [${bewustzijnVan(c)}] ${c.invalshoek ?? ''} — format: ${c.format ?? '?'}, structuur: ${c.structuur ?? '?'}, creator: ${c.creator_type ?? '?'}, test: ${c.variabele ?? '?'}, prioriteit: ${c.prioriteit ?? '?'}`
 						)
 						.join('\n')
 			);
@@ -117,7 +118,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				`- Kort en concreet (geen lappen tekst). Stel een verduidelijkende vraag als dat helpt.\n` +
 				`- Baseer je op de trigger map en de huidige opzet hieronder; verzin geen data.\n` +
 				`- Respecteer de beschikbare middelen: is er alleen static content, stel dan geen video/UGC voor en noem klantcontent "klantvisual", niet "UGC".\n` +
-				`- Houd "schoon testen" in gedachten: in de eerste ronde varieert alleen de invalshoek, de rest blijft per funnelfase gelijk.\n` +
+				`- Houd "schoon testen" in gedachten: in de eerste ronde varieert alleen de invalshoek, de rest blijft per bewustzijnsfase gelijk.\n` +
 				`- Zodra jullie het eens zijn over concrete wijzigingen, vat die kort en puntsgewijs samen zodat de collega ze kan doorvoeren.\n\n` +
 				(context ? `# Context\n${context}` : '');
 

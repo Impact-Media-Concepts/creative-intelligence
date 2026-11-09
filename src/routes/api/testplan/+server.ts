@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			.maybeSingle(),
 		supabase
 			.from('concepts')
-			.select('funnelfase, invalshoek, format, structuur, variabele, prioriteit')
+			.select('funnelfase, awareness, invalshoek, format, structuur, variabele, prioriteit')
 			.eq('client_id', clientId)
 			.eq('gearchiveerd', false)
 			.order('created_at', { ascending: true })

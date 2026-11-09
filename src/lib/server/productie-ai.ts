@@ -1,5 +1,6 @@
 import { claudeJSON } from './claude';
 import type { Script } from '$lib/productie';
+import { bewustzijnVan } from '$lib/trigger-map';
 
 const SCHEMA = {
 	type: 'object',
@@ -28,6 +29,7 @@ interface ScriptConcept {
 	aanbod: string | null;
 	invalshoek: string | null;
 	funnelfase: string | null;
+	awareness?: string | null;
 	format: string | null;
 	structuur: string | null;
 	creator_type: string | null;
@@ -49,7 +51,7 @@ export async function genereerScript(concept: ScriptConcept, tm: TmContext) {
 	const prompt =
 		`Schrijf het script voor dit concept:\n` +
 		`- Aanbod: ${concept.aanbod || '—'}\n` +
-		`- Invalshoek: ${concept.invalshoek || '—'} (${concept.funnelfase || '?'})\n` +
+		`- Invalshoek: ${concept.invalshoek || '—'} (${concept.funnelfase || concept.awareness ? bewustzijnVan(concept) : '?'})\n` +
 		`- Format: ${concept.format || '—'} · Structuur: ${concept.structuur || '—'}\n` +
 		`- Creator: ${concept.creator_type || '—'}\n` +
 		`- Hook-idee (indien gegeven): ${concept.hook || '—'}\n` +

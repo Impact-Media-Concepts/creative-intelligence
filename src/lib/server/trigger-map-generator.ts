@@ -1,5 +1,5 @@
 import { claudeJSON } from './claude';
-import type { TriggerMapData } from '$lib/trigger-map';
+import { BEWUSTZIJN_LABELS, funnelUitBewustzijn, type TriggerMapData } from '$lib/trigger-map';
 import { BRON1_VRAGEN, BRON2_VRAGEN } from '$lib/intake-vragen';
 import { heeftInhoud } from '$lib/progress';
 
@@ -18,7 +18,7 @@ Geef output ALLEEN als valide JSON in dit exacte formaat:
     { "naam": "korte naam van het segment", "omschrijving": "wie is dit, 1-2 zinnen", "kernbehoefte": "wat wil dit segment vooral", "kernbezwaar": "grootste twijfel/drempel" }
   ],
   "invalshoeken": [
-    { "naam": "naam van invalshoek", "omschrijving": "2-3 zinnen", "funnelfase": "TOFU/MOFU/BOFU", "onderbouwing": "waarom kansrijk op basis van de data" }
+    { "naam": "naam van invalshoek", "omschrijving": "2-3 zinnen", "bewustzijn": "Onbewust/Probleembewust/Oplossingsbewust/Productbewust/Meest bewust", "onderbouwing": "waarom kansrijk op basis van de data" }
   ]
 }
 
@@ -30,13 +30,15 @@ Richtlijnen:
 - Routines: 3-5 items
 - Kansen vs concurrenten: 3-5 concrete gaps die je ziet
 - Persona's: 2-4 duidelijk onderscheidende doelgroep-segmenten uit de data (bijv. verschillende koopmotieven of levensfases). Geen verzonnen segmenten.
-- Invalshoeken: 2-4 per funnelfase — maar ALLEEN écht onderscheidende, kansrijke hoeken. Liever 2 sterke dan 3 waarvan er één zwak is of eigenlijk een tactiek. Binnen elke fase gesorteerd op kans; geen herhaling van dezelfde hoek in meerdere fases.
-- KWALITEIT VAN EEN INVALSHOEK (belangrijk): een invalshoek is de BOODSCHAP / het inzicht dat de doelgroep raakt — NIET het advertentie-mechanisme, format of de CTA. NOOIT als invalshoek opvoeren: ad-tactieken/mechanieken (retargeting, dynamische/DCA-ads, catalogus-ads, "urgentie", "voorraad-urgentie", "garantie-CTA"), een format (carousel/UGC/video/"contentserie") of een losse call-to-action. Ook een BOFU-hoek is een concreet inzicht/boodschap (bv. een specifiek bezwaar omgedraaid), geen tactiek. Maak hoeken specifiek en scroll-stoppend, geworteld in een concreet pijnpunt/wens/bezwaar en waar mogelijk in de LETTERLIJKE taal van de doelgroep — vermijd brave, generieke categorielabels.
-- FUNNEL-PLAATSING (belangrijk — plaats elke invalshoek in de JUISTE fase):
-    • TOFU (awareness): brede herkenning, pijnpunt/emotie, nieuwsgierigheid, het probleem of verlangen zelf. Nog GEEN merk-USP's, bewijs of aanbod.
-    • MOFU (overweging): USP's, uitleg, vergelijking met alternatieven/concurrenten, SOCIAL PROOF (reviews/beoordelingen/cijfers), twijfels wegnemen.
-    • BOFU (conversie): aanbod, prijs/financiering, garantie, urgentie, de laatste drempel wegnemen, directe call-to-action.
-  Let op: social proof, reviews, ratings en vergelijkingen horen in MOFU of BOFU — NOOIT in TOFU.
+- Invalshoeken: 8-12 in totaal, verdeeld over de vijf bewustzijnsfases (zie hieronder). Probleembewust, Oplossingsbewust en Productbewust: 2-3 per fase. Onbewust en Meest bewust: 1-2 per fase, en alleen als de data daar echt aanleiding toe geeft (Meest bewust bv. alleen bij een concreet aanbod, prijs of deadline). ALLEEN écht onderscheidende, kansrijke hoeken: liever 2 sterke dan 3 waarvan er één zwak is of eigenlijk een tactiek. Binnen elke fase gesorteerd op kans. Hetzelfde pijnpunt/verlangen mag in meerdere fases terugkomen, maar dan als een écht andere boodschap (andere ingang voor iemand die iets anders weet) — nooit dezelfde boodschap herhaald.
+- KWALITEIT VAN EEN INVALSHOEK (belangrijk): een invalshoek is de BOODSCHAP / het inzicht dat de doelgroep raakt — NIET het advertentie-mechanisme, format of de CTA. NOOIT als invalshoek opvoeren: ad-tactieken/mechanieken (retargeting, dynamische/DCA-ads, catalogus-ads, "urgentie", "voorraad-urgentie", "garantie-CTA"), een format (carousel/UGC/video/"contentserie") of een losse call-to-action. Ook een Productbewust- of Meest-bewust-hoek is een concreet inzicht/boodschap (bv. een specifiek bezwaar omgedraaid), geen tactiek. Maak hoeken specifiek en scroll-stoppend, geworteld in een concreet pijnpunt/wens/bezwaar en waar mogelijk in de LETTERLIJKE taal van de doelgroep — vermijd brave, generieke categorielabels.
+- BEWUSTZIJNSFASE (belangrijk — plaats elke invalshoek in de JUISTE fase; de fase beschrijft wat de persoon al WEET, en bepaalt wat de creative moet doen):
+    • Onbewust — taak: vertel een verhaal. Ze weten nog niet dat ze een probleem hebben. Een herkenbare situatie of nieuwsgierig makend inzicht. GEEN product, USP's, bewijs of aanbod.
+    • Probleembewust — taak: benoem de pijn. Ze voelen het probleem maar kennen de oplossing niet. Het pijnpunt of verlangen scherp, in hun eigen taal. Nog GEEN merk-USP's, bewijs of aanbod.
+    • Oplossingsbewust — taak: jouw aanpak versus de rest. Ze zoeken een oplossing en vergelijken. USP's, uitleg, vergelijking met alternatieven/concurrenten.
+    • Productbewust — taak: bewijs en bezwaren. Ze kennen het merk/product maar twijfelen nog. SOCIAL PROOF (reviews/beoordelingen/cijfers), garanties, het kernbezwaar omdraaien.
+    • Meest bewust — taak: prijs en deadline. Ze willen eigenlijk al kopen. Aanbod, prijs/financiering, actie, deadline of urgentie (alleen als dat in de data staat).
+  Let op: social proof, reviews, ratings en vergelijkingen horen NOOIT in Onbewust of Probleembewust.
 - Taal: Nederlands
 - Gebruik alleen wat uit de data blijkt — geen aannames`;
 
@@ -73,10 +75,10 @@ const TRIGGER_MAP_SCHEMA = {
 				properties: {
 					naam: { type: 'string' },
 					omschrijving: { type: 'string' },
-					funnelfase: { type: 'string', enum: ['TOFU', 'MOFU', 'BOFU'] },
+					bewustzijn: { type: 'string', enum: BEWUSTZIJN_LABELS },
 					onderbouwing: { type: 'string' }
 				},
-				required: ['naam', 'omschrijving', 'funnelfase', 'onderbouwing']
+				required: ['naam', 'omschrijving', 'bewustzijn', 'onderbouwing']
 			}
 		}
 	},
@@ -192,5 +194,12 @@ export interface GeneratieResultaat {
 /** Roept het model (via de proxy) aan en geeft de trigger map + metadata voor logging terug. */
 export async function genereerTriggerMap(intakeTekst: string): Promise<GeneratieResultaat> {
 	const prompt = `Hieronder de beschikbare intake-data. Genereer op basis hiervan de trigger map.\n\n${intakeTekst}`;
-	return claudeJSON<TriggerMapData>(SYSTEM_PROMPT, prompt, TRIGGER_MAP_SCHEMA, 16000, 'medium');
+	const res = await claudeJSON<TriggerMapData>(SYSTEM_PROMPT, prompt, TRIGGER_MAP_SCHEMA, 16000, 'medium');
+	// De AI kiest de bewustzijnsfase; de legacy-funnelfase (TOFU/MOFU/BOFU) wordt eruit afgeleid
+	// zodat kolommen en code die er nog op leunen (meta-sync, guardrail) blijven werken.
+	res.data.invalshoeken = res.data.invalshoeken.map((i) => ({
+		...i,
+		funnelfase: funnelUitBewustzijn(i.bewustzijn)
+	}));
+	return res;
 }

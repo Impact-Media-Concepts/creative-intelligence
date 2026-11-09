@@ -250,6 +250,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				const res = await genereerVolgendeTestronde({
 					winnaar: {
 						funnelfase: bron.funnelfase,
+						awareness: bron.awareness,
 						invalshoek: bron.invalshoek,
 						format: bron.format,
 						structuur: bron.structuur,
@@ -283,7 +284,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 
 				const rijen: ConceptInsert[] = res.data.concepten.map((c) => ({
 					client_id: bron.client_id,
-					funnelfase: c.funnelfase,
+					// Varianten behouden de fase van de winnaar (schoon testen) — de AI kiest die niet.
+					funnelfase: bron.funnelfase,
+					awareness: bron.awareness,
 					invalshoek: c.invalshoek,
 					format: c.format,
 					structuur: c.structuur,

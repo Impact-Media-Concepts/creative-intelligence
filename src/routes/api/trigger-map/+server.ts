@@ -5,6 +5,7 @@ import {
 	INVALSHOEK_STATUSSEN,
 	SCORE_NIVEAUS,
 	BEWUSTZIJN_LABELS,
+	bewustzijnVan,
 	funnelUitBewustzijn
 } from '$lib/trigger-map';
 import { genereerInvalshoekScores } from '$lib/server/scoring-ai';
@@ -110,7 +111,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 						naam: i.naam as string,
 						omschrijving: i.omschrijving as string,
 						onderbouwing: i.onderbouwing as string,
-						funnelfase: i.funnelfase as string
+						bewustzijn: bewustzijnVan(i as { bewustzijn?: string; funnelfase?: string })
 					})),
 					personas: (versie.personas as Inv[] | null) ?? [],
 					pijnpunten: (versie.pijnpunten as string[]) ?? [],

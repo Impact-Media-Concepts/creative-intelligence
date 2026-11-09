@@ -1,8 +1,10 @@
 import { claudeJSON } from './claude';
 import type { Testplan } from '$lib/testplan';
+import { bewustzijnVan } from '$lib/trigger-map';
 
 export interface TestplanConcept {
 	funnelfase: string | null;
+	awareness?: string | null;
 	invalshoek: string | null;
 	format: string | null;
 	structuur: string | null;
@@ -51,14 +53,14 @@ Geef output ALLEEN als valide JSON in dit formaat:
 {
   "toelichting": "2-4 zinnen: waarom deze volgorde, wat is de rode draad, waar begin je en waarom",
   "sprints": [
-    { "titel": "Sprint 1 — ...", "focus": "welke persona + funnellaag", "concepten": ["invalshoek A", "invalshoek B"], "wat_testen": "welke variabele/hypothese", "succescriterium": "concreet en meetbaar", "budget": "bijv. €900 testbudget", "duur": "bijv. 2 weken" }
+    { "titel": "Sprint 1 — ...", "focus": "welke persona + bewustzijnsfase", "concepten": ["invalshoek A", "invalshoek B"], "wat_testen": "welke variabele/hypothese", "succescriterium": "concreet en meetbaar", "budget": "bijv. €900 testbudget", "duur": "bijv. 2 weken" }
   ]
 }
 
 Richtlijnen:
 - Bouw het plan rond de persona's: activeer per sprint (een van) de persona's, en verwijs in "concepten" naar de invalshoeken uit de matrix die daarbij horen.
-- Eerste sprints: test de INVALSHOEK per funnellaag (dat is de eerste variabele). Latere sprints: optimaliseer format/structuur/creator van de winnende invalshoek.
-- Dek TOFU, MOFU en BOFU af; wees concreet over succescriteria (hook rate, CTR, ROAS, CPA, saves) passend bij de funnellaag.
+- Eerste sprints: test de INVALSHOEK per bewustzijnsfase (dat is de eerste variabele). Latere sprints: optimaliseer format/structuur/creator van de winnende invalshoek.
+- Dek de bewustzijnsfases af die in de matrix voorkomen; wees concreet over succescriteria (hook rate, CTR, ROAS, CPA, saves) passend bij de fase (vroege fases: hook rate/CTR/saves; late fases: ROAS/CPA).
 - Houd het realistisch: 4-6 sprints, oplopende budgetten, korte duur per sprint.
 - "concepten" bevat de namen van de invalshoeken/concepten uit de aangeleverde matrix — verzin geen nieuwe.
 - Taal: Nederlands. Baseer je op de aangeleverde data — geen aannames.`;
@@ -78,7 +80,7 @@ export async function genereerTestplan(input: TestplanInput) {
 		? input.concepten
 				.map(
 					(c) =>
-						`- [${c.funnelfase ?? '?'}] ${c.invalshoek ?? '(geen invalshoek)'} · ${c.format ?? '?'} · ${c.structuur ?? '?'} · test: ${c.variabele ?? '?'} · prioriteit: ${c.prioriteit ?? '?'}`
+						`- [${bewustzijnVan(c)}] ${c.invalshoek ?? '(geen invalshoek)'} · ${c.format ?? '?'} · ${c.structuur ?? '?'} · test: ${c.variabele ?? '?'} · prioriteit: ${c.prioriteit ?? '?'}`
 				)
 				.join('\n')
 		: '(geen concepten)';

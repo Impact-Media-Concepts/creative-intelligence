@@ -22,7 +22,6 @@
 		type ScoreNiveau
 	} from '$lib/trigger-map';
 	import {
-		FUNNELFASES,
 		FORMATS,
 		STRUCTUREN,
 		TEST_VARIABELEN,
@@ -304,7 +303,7 @@
 	let toonStrategie = $state(false);
 	let toonPlan = $state(false); // Plan van aanpak standaard ingeklapt — Testruimte is de voordeur
 	let cfgPersonas = $state<string[]>([]);
-	let cfgFunnels = $state<string[]>([]);
+	let cfgFases = $state<string[]>([]);
 	let cfgMiddelen = $state<string[]>([]);
 	let cfgDoel = $state('');
 	let cfgTarget = $state('');
@@ -326,7 +325,7 @@
 	function huidigeConfig() {
 		return {
 			personas: cfgPersonas,
-			funnelfases: cfgFunnels,
+			bewustzijnsfases: cfgFases,
 			middelen: cfgMiddelen,
 			doelstelling: cfgDoel,
 			target: cfgTarget,
@@ -336,7 +335,7 @@
 	}
 	let configActief = $derived(
 		cfgPersonas.length > 0 ||
-			cfgFunnels.length > 0 ||
+			cfgFases.length > 0 ||
 			cfgMiddelen.length > 0 ||
 			!!cfgDoel ||
 			!!cfgTarget.trim() ||
@@ -352,7 +351,7 @@
 				: 'Beschikbare middelen: geen beperking opgegeven.'
 		);
 		if (cfgPersonas.length) r.push(`Persona-scope: ${cfgPersonas.join(', ')}.`);
-		if (cfgFunnels.length) r.push(`Funnel-scope: ${cfgFunnels.join(', ')}.`);
+		if (cfgFases.length) r.push(`Fase-scope: ${cfgFases.join(', ')}.`);
 		if (cfgDoel) r.push(`Doelstelling/KPI: ${cfgDoel}.`);
 		if (cfgTarget.trim()) r.push(`Target: ${cfgTarget.trim()}.`);
 		if (cfgParallel) r.push('Parallel testen toegestaan.');
@@ -463,7 +462,7 @@
 		// Het goedgekeurde plan als strikte sturing meegeven → matrix consistent met het plan.
 		const planContext =
 			'## Afgestemd plan van aanpak (VOLG DIT strikt)\n' +
-			`${plan.samenvatting}\nDoelgroep: ${plan.doelgroep}\nFunnelaanpak: ${plan.funnelaanpak}\n` +
+			`${plan.samenvatting}\nDoelgroep: ${plan.doelgroep}\nAanpak per bewustzijnsfase: ${plan.funnelaanpak}\n` +
 			'Teststructuur:\n' +
 			plan.sprints
 				.map((s) => `- ${s.titel}: invalshoeken ${(s.concepten ?? []).join(', ')} — ${s.wat_testen}`)
@@ -668,10 +667,10 @@
 							</div>
 						{/if}
 						<div>
-							<span class="mb-1.5 block font-medium">Funnellagen</span>
+							<span class="mb-1.5 block font-medium">Bewustzijnsfases</span>
 							<div class="flex flex-wrap gap-1.5">
-								{#each FUNNELFASES as f (f)}
-									<button type="button" class={chipClass(cfgFunnels.includes(f))} onclick={() => (cfgFunnels = toggleIn(cfgFunnels, f))}>
+								{#each BEWUSTZIJN_LABELS as f (f)}
+									<button type="button" class={chipClass(cfgFases.includes(f))} onclick={() => (cfgFases = toggleIn(cfgFases, f))}>
 										{f}
 									</button>
 								{/each}
@@ -746,7 +745,7 @@
 				<div class="space-y-3 rounded-md border bg-background p-3 text-sm">
 					<p>{plan.samenvatting}</p>
 					<p><span class="font-medium">Doelgroep:</span> {plan.doelgroep}</p>
-					<p><span class="font-medium">Funnelaanpak:</span> {plan.funnelaanpak}</p>
+					<p><span class="font-medium">Aanpak per bewustzijnsfase:</span> {plan.funnelaanpak}</p>
 					<div class="space-y-2">
 						{#each plan.sprints as s, i (i)}
 							<div class="rounded-md border p-2.5">

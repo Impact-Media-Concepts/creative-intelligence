@@ -1,8 +1,10 @@
 import { claudeJSON } from './claude';
 import type { Brief, Analyse } from '$lib/sprint';
+import { bewustzijnVan } from '$lib/trigger-map';
 
 interface ConceptContext {
 	funnelfase: string | null;
+	awareness?: string | null;
 	invalshoek: string | null;
 	format: string | null;
 	structuur: string | null;
@@ -52,7 +54,7 @@ const BRIEF_SYSTEM = `Je bent een Creative Social Ads Strateeg bij Online Klik. 
 Geef output ALLEEN als valide JSON in dit formaat:
 {
   "hypothese": "Wij geloven dat ... omdat ...",
-  "wie": "doelgroep + funnelfase + bewustzijnsniveau",
+  "wie": "doelgroep + bewustzijnsfase",
   "gedrag": "welk gedrag je wilt uitlokken (na 3 sec / na volledig zien)",
   "format": "concreet formaat (bijv. verticale video 9:16, 15-25 sec, UGC)",
   "structuur": "opbouw van de creative",
@@ -97,7 +99,6 @@ const VERVOLG_SCHEMA = {
 				type: 'object',
 				additionalProperties: false,
 				properties: {
-					funnelfase: { type: 'string', enum: ['TOFU', 'MOFU', 'BOFU'] },
 					invalshoek: { type: 'string' },
 					format: { type: 'string' },
 					structuur: { type: 'string' },
@@ -107,7 +108,6 @@ const VERVOLG_SCHEMA = {
 					onderbouwing: { type: 'string' }
 				},
 				required: [
-					'funnelfase',
 					'invalshoek',
 					'format',
 					'structuur',
@@ -123,7 +123,6 @@ const VERVOLG_SCHEMA = {
 };
 
 export interface VervolgConcept {
-	funnelfase: 'TOFU' | 'MOFU' | 'BOFU';
 	invalshoek: string;
 	format: string;
 	structuur: string;
@@ -147,7 +146,7 @@ function formaatInstructie(format: string | null): string {
 
 function conceptTekst(c: ConceptContext): string {
 	return [
-		`Funnelfase: ${c.funnelfase ?? '—'}`,
+		`Bewustzijnsfase: ${c.funnelfase || c.awareness ? bewustzijnVan(c) : '—'}`,
 		`Invalshoek: ${c.invalshoek ?? '—'}`,
 		`Format: ${c.format ?? '—'}`,
 		`Structuur: ${c.structuur ?? '—'}`,
@@ -206,12 +205,12 @@ const VERVOLG_SYSTEM = `Je bent een Creative Social Ads Strateeg bij Online Klik
 Geef output ALLEEN als valide JSON in dit formaat:
 {
   "concepten": [
-    { "funnelfase": "TOFU/MOFU/BOFU", "invalshoek": "...", "format": "...", "structuur": "...", "creator_type": "...", "hypothese": "...", "prioriteit": "Hoog/Middel/Laag", "onderbouwing": "..." }
+    { "invalshoek": "...", "format": "...", "structuur": "...", "creator_type": "...", "hypothese": "...", "prioriteit": "Hoog/Middel/Laag", "onderbouwing": "..." }
   ]
 }
 
 Strikte regels:
-- Maak 2 tot 4 varianten die ALLEEN de aangegeven volgende variabele variëren. Alle andere dimensies (funnelfase, invalshoek, en de niet-geteste variabelen) blijven IDENTIEK aan het winnende concept — dat is schoon testen.
+- Maak 2 tot 4 varianten die ALLEEN de aangegeven volgende variabele variëren. Alle andere dimensies (bewustzijnsfase, invalshoek, en de niet-geteste variabelen) blijven IDENTIEK aan het winnende concept — dat is schoon testen. De bewustzijnsfase hoef je niet in je output te zetten; die neemt het systeem over van de winnaar.
 - Voorbeeld: als de volgende variabele "Format" is, houd je invalshoek/structuur/creator_type gelijk aan de winnaar en zet je per variant een ander format.
 - "hypothese": concreet en toetsbaar, en gebruik de learning van de vorige ronde (wat werkte) als onderbouwing van je keuzes.
 - "onderbouwing": 1-2 zinnen — waarom deze variant kansrijk is gegeven de winnende resultaten en de learning.

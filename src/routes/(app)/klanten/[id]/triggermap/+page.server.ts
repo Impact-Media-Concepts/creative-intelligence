@@ -5,7 +5,7 @@ import { genereerInvalshoekScores } from '$lib/server/scoring-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 import { BRON1_DREMPEL } from '$lib/intake-vragen';
 import { heeftInhoud } from '$lib/progress';
-import type { Invalshoek } from '$lib/trigger-map';
+import { bewustzijnVan, type Invalshoek } from '$lib/trigger-map';
 import type { Json } from '$lib/supabase/database.types';
 
 // AI-generatie met adaptive thinking duurt langer; ruimere Vercel-functietimeout.
@@ -134,7 +134,7 @@ export const actions: Actions = {
 							naam: i.naam,
 							omschrijving: i.omschrijving,
 							onderbouwing: i.onderbouwing,
-							funnelfase: i.funnelfase
+							bewustzijn: bewustzijnVan(i)
 						})),
 						personas: res.data.personas ?? [],
 						pijnpunten: res.data.pijnpunten,

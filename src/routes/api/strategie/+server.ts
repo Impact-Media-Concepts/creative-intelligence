@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { Json } from '$lib/supabase/database.types';
 import { genereerStrategiePlan, type StrategieConfig } from '$lib/server/strategie-ai';
-import { afgeleidePrioriteit, type InvalshoekScore } from '$lib/trigger-map';
+import { afgeleidePrioriteit, bewustzijnVan, type InvalshoekScore } from '$lib/trigger-map';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 import type { StrategiePlan } from '$lib/testplan';
 
@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			const rawCfg = (body.config ?? {}) as Record<string, unknown>;
 			const cfg: StrategieConfig = {
 				personas: strArr(rawCfg.personas),
-				funnelfases: strArr(rawCfg.funnelfases),
+				bewustzijnsfases: strArr(rawCfg.bewustzijnsfases),
 				middelen: strArr(rawCfg.middelen),
 				doelstelling: rawCfg.doelstelling ? String(rawCfg.doelstelling) : undefined,
 				target: rawCfg.target ? String(rawCfg.target) : undefined,
@@ -49,6 +49,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				omschrijving?: string;
 				onderbouwing?: string;
 				funnelfase?: string;
+				bewustzijn?: string;
 				status?: string;
 				gearchiveerd?: boolean;
 				score?: InvalshoekScore;
@@ -81,7 +82,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 							naam: i.naam,
 							omschrijving: i.omschrijving,
 							onderbouwing: i.onderbouwing,
-							funnelfase: i.funnelfase,
+							bewustzijn: bewustzijnVan(i),
 							status: i.status,
 							gearchiveerd: i.gearchiveerd,
 							prioriteit: i.score ? afgeleidePrioriteit(i.score) : undefined
