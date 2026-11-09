@@ -71,6 +71,12 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-09 — Trigger Map in Focusmodus (één sectie tegelijk)
+- **Wat:** Trigger Map-pagina herbouwd volgens het Focusmodus-ontwerp: emerald samenvatting-hero (één zin uit eerste wens + pijnpunt + bezwaar, met voortgangsring = aandeel secties met ≥3 signalen, persona's ≥1), sectie-rail met mini-balkjes, één sectie tegelijk bewerken (deeplink `?sectie=…`), signalen als rijen met inline bewerken + enter-om-toe-te-voegen, persona's als kaarten met Wil/Twijfelt-pills (meegroeiend), navigatie Terug/Volgende en aan het eind "Naar de testruimte". Nieuwe componenten in `src/lib/components/app/triggermap/` (`SamenvattingHero`, `SectieRail`). Opslaglogica (autosave, versies, opnieuw genereren, oude versie alleen-lezen) ongewijzigd.
+- **Bewust weggelaten:** bron-labels per signaal en AI-suggestie-chips uit het ontwerp — die data bestaat nog niet (signalen zijn platte strings). Kandidaat voor later (bron-tracking in de intake-parser).
+- **Verificatie:** `npm run check` 0 fouten; bekeken op Soccerfanshop (alleen lezen): sectie wisselen via rail → URL `?sectie=`, actieve rij, Volgende-label, persona-kaarten (4), smalle weergave stapelt. Bewerken/opslaan niet getest op echte klant.
+- **Migratie:** geen.
+
 ### 2026-11-09 — Look & feel (Online Klik-huisstijl) + bewustzijnsfases i.p.v. TOFU/MOFU/BOFU · `9f57b2e` `8fec044` `1869fca` `3b2e67b` `6917320`
 - **Wat (look & feel):** app-brede design-tokens (emerald/actie/limoen/gras/oranje), Mic 32 New Rounded voor koppen + Rubik body (`static/fonts`, `app.css`, `app.html`); sidebar als pills met loop-stepper (✓ = echte klantvoortgang uit `clients.huidige_fase`); Testruimte herbouwd volgens het Focusmodus-ontwerp (hero met live som, genummerde dimensiekaarten, horizon-meter, startset). Logica ongewijzigd.
 - **Wat (spoor B, stap 1):** vijf bewustzijnsfases (Onbewust → Meest bewust, elk met een "taak": verhaal / benoem de pijn / jouw aanpak vs. de rest / bewijs & bezwaren / prijs & deadline) vervangen TOFU/MOFU/BOFU overal in de interface. Invalshoek krijgt optioneel veld `bewustzijn`; oude data valt terug via `bewustzijnUitFunnel` (TOFU→Probleembewust, MOFU→Oplossingsbewust, BOFU→Productbewust). De legacy `funnelfase` blijft intern bestaan en wordt uit de bewustzijnsfase afgeleid, zodat AI-prompts en bestaande klanten blijven werken. Matrix-tabel: één kolom "Bewustzijnsfase" i.p.v. Funnelfase + Awareness. Sortering volgt Onbewust → Meest bewust.
