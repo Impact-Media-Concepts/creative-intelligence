@@ -13,6 +13,8 @@
 	import { TESTVOLGORDE } from '$lib/matrix';
 	import { conceptAdCode } from '$lib/meta';
 	import MetaKoppeling from '$lib/components/app/MetaKoppeling.svelte';
+	import ResultatenBord from '$lib/components/app/ResultatenBord.svelte';
+	import { berekenResultaten } from '$lib/resultaten';
 	import Brain from '@lucide/svelte/icons/brain';
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import GitBranch from '@lucide/svelte/icons/git-branch';
@@ -49,6 +51,30 @@
 	$effect(() => {
 		concepten = data.concepten.map((c) => ({ ...c }));
 	});
+
+	// Scorebord: rekent live mee (ook als je hieronder handmatig cijfers invult).
+	const groepen = $derived(
+		berekenResultaten(
+			concepten.map((c) => ({
+				id: c.id,
+				invalshoek: c.invalshoek,
+				variabele: c.variabele,
+				funnelfase: c.funnelfase,
+				awareness: c.awareness,
+				is_winnaar: c.is_winnaar,
+				auto_winnaar: c.auto_winnaar,
+				hook_rate: c.hook_rate,
+				ctr: c.ctr,
+				roas: c.roas,
+				cpa: c.cpa,
+				meta_metrics: c.meta_metrics
+			}))
+		)
+	);
+	function markeerWinnaar(id: string) {
+		const c = concepten.find((x) => x.id === id);
+		if (c && !c.is_winnaar) toggleWinnaar(c);
+	}
 
 	let bezigAnalyse = $state<Record<string, boolean>>({});
 	let bezigVervolg = $state<Record<string, boolean>>({});
@@ -159,6 +185,10 @@
 
 	<!-- Meta-koppeling: automatisch resultaten uitlezen -->
 	<MetaKoppeling {clientId} connectie={data.metaConnectie} />
+
+	{#if concepten.length}
+		<ResultatenBord {groepen} onWinnaar={markeerWinnaar} />
+	{/if}
 
 	{#if fout}
 		<div class="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -2,7 +2,7 @@
  * Guardrail — beslist of een variant automatisch als winnaar gemarkeerd mag worden.
  *
  * Principe: liever een keer niets doen dan een verkeerde winnaar aanwijzen.
- *   - Vergelijk binnen een testgroep (zelfde funnelfase + geteste variabele).
+ *   - Vergelijk binnen een testgroep (zelfde bewustzijnsfase + geteste variabele).
  *   - Primaire metric: ROAS (indien er aankopen zijn), anders CTR.
  *   - Alleen markeren bij voldoende spend/impressies/looptijd/conversies (drempels)
  *     én een duidelijke voorsprong op de beste alternatieve variant.
@@ -11,10 +11,13 @@
  */
 
 import { GUARDRAIL, type MetaMetrics } from '$lib/meta';
+import { bewustzijnVan } from '$lib/trigger-map';
 
 export interface GuardrailConcept {
 	id: string;
 	funnelfase: string | null;
+	/** Bewustzijnsfase; leidend voor de testgroep (valt terug op funnelfase). */
+	awareness?: string | null;
 	variabele: string | null;
 	is_winnaar: boolean;
 	metrics: MetaMetrics | null;
@@ -48,7 +51,8 @@ function pct(v: number): string {
 export function bepaalAutoWinnaars(concepten: GuardrailConcept[]): AutoWinnaar[] {
 	const groepen = new Map<string, GuardrailConcept[]>();
 	for (const c of concepten) {
-		const sleutel = `${c.funnelfase ?? '?'}::${c.variabele ?? '?'}`;
+		// Testgroep = zelfde bewustzijnsfase + geteste variabele (andere fases zijn andere doelgroepen).
+		const sleutel = `${bewustzijnVan(c)}::${c.variabele ?? '?'}`;
 		const lijst = groepen.get(sleutel) ?? [];
 		lijst.push(c);
 		groepen.set(sleutel, lijst);

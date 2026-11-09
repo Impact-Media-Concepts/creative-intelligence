@@ -155,7 +155,7 @@ export async function syncConnection(admin: Admin, conn: MetaConnection): Promis
 		const { data: concepten } = await admin
 			.from('concepts')
 			.select(
-				'id, invalshoek, funnelfase, variabele, is_winnaar, meta_ad_external_id, meta_auto_sync'
+				'id, invalshoek, funnelfase, awareness, variabele, is_winnaar, meta_ad_external_id, meta_auto_sync'
 			)
 			.eq('client_id', conn.client_id)
 			.eq('gearchiveerd', false);
@@ -201,6 +201,7 @@ export async function syncConnection(admin: Admin, conn: MetaConnection): Promis
 			guardrailInput.push({
 				id: c.id,
 				funnelfase: c.funnelfase,
+				awareness: c.awareness,
 				variabele: c.variabele,
 				is_winnaar: c.is_winnaar,
 				metrics: c.meta_auto_sync ? m : null,
