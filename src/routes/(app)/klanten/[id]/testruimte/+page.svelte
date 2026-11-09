@@ -4,7 +4,15 @@
 	import { goto } from '$app/navigation';
 	import { postJSON } from '$lib/saver.svelte';
 	import { FORMATS, STRUCTUREN, CTA_SUGGESTIES } from '$lib/matrix';
-	import { riceScore, afgeleidePrioriteit, type Invalshoek } from '$lib/trigger-map';
+	import {
+		riceScore,
+		afgeleidePrioriteit,
+		bewustzijnVan,
+		bewustzijnTaak,
+		funnelUitBewustzijn,
+		BEWUSTZIJN_KLEUR,
+		type Invalshoek
+	} from '$lib/trigger-map';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Check from '@lucide/svelte/icons/check';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
@@ -97,7 +105,7 @@
 	const testAssen = $derived(DIMS.filter((d) => n(d.key) > 1));
 	const primaireAs = $derived(testAssen[0]?.as ?? 'Invalshoek');
 
-	interface Combo { aanbod: string; angle: string; format: string; structuur: string | null; creator: string; funnelfase: string; score: number; }
+	interface Combo { aanbod: string; angle: string; format: string; structuur: string | null; creator: string; bewustzijn: string; score: number; }
 	const combos = $derived.by<Combo[]>(() => {
 		const out: Combo[] = [];
 		const structs = sel.structuur.length ? sel.structuur : [null];
@@ -108,7 +116,7 @@
 				for (const f of sel.format)
 					for (const st of structs)
 						for (const cr of sel.creator)
-							out.push({ aanbod: a, angle: g, format: f, structuur: st, creator: cr, funnelfase: inv?.funnelfase ?? 'TOFU', score: sc });
+							out.push({ aanbod: a, angle: g, format: f, structuur: st, creator: cr, bewustzijn: inv ? bewustzijnVan(inv) : 'Probleembewust', score: sc });
 			}
 		return out.sort((x, y) => y.score - x.score);
 	});
@@ -132,11 +140,6 @@
 		}[niveau]
 	);
 
-	// Bewustwordingsfase afgeleid van de funnelfase (indicatief).
-	function awarenessVoor(f: string): string {
-		return f === 'BOFU' ? 'Productbewust' : f === 'MOFU' ? 'Oplossingsbewust' : 'Probleembewust';
-	}
-
 	async function genereer(alle: boolean) {
 		const bron = alle ? combos : focus;
 		if (!bron.length) return;
@@ -147,8 +150,8 @@
 			const lijnen = bron.map((c) => {
 				const inv = angleByName(c.angle);
 				return {
-					funnelfase: c.funnelfase,
-					awareness: awarenessVoor(c.funnelfase),
+					funnelfase: funnelUitBewustzijn(c.bewustzijn),
+					awareness: c.bewustzijn,
 					invalshoek: c.angle,
 					aanbod: c.aanbod,
 					format: c.format,
@@ -192,11 +195,6 @@
 		}
 	}
 
-	const funnelCls: Record<string, string> = {
-		TOFU: 'bg-[#F4FAE8] text-[#3E5A1A]',
-		MOFU: 'bg-[#FEF0E8] text-[#B8410C]',
-		BOFU: 'bg-brand-mint text-brand-green'
-	};
 	const eyebrow = 'text-[11px] font-bold uppercase tracking-[0.14em]';
 	const kaart = 'rounded-[26px] border bg-card';
 	const lift = 'transition-all duration-[160ms] ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(0,87,60,0.12)] motion-reduce:transition-none motion-reduce:hover:translate-y-0';
@@ -316,7 +314,7 @@
 								<button
 									type="button"
 									class={cn(
-										'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13.5px]',
+										'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-left text-[13.5px]',
 										lift,
 										aan ? cn(d.accent, 'font-semibold') : 'border-border bg-card text-foreground'
 									)}
@@ -324,7 +322,11 @@
 								>
 									{#if aan}<Check class="size-[13px]" strokeWidth={3} />{/if}
 									{#if inv}
-										<span class={cn('rounded-full px-[7px] py-px text-[10px] font-bold tracking-[0.04em]', aan ? 'bg-white/20 text-white' : funnelCls[inv.funnelfase])}>{inv.funnelfase}</span>
+										{@const fase = bewustzijnVan(inv)}
+										<span
+											title={bewustzijnTaak(fase)}
+											class={cn('shrink-0 whitespace-nowrap rounded-full border px-[7px] py-px text-[10px] font-bold tracking-[0.02em]', aan ? 'border-white/30 bg-white/20 text-white' : BEWUSTZIJN_KLEUR[fase])}>{fase}</span
+										>
 									{/if}
 									{o || '(naamloos)'}
 									{#if inv?.score}

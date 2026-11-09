@@ -2,6 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Card from '$lib/components/ui/card';
 	import { cn } from '$lib/utils';
+	import { BEWUSTZIJN_KLEUR, bewustzijnVan } from '$lib/trigger-map';
 	import { datumKort } from '$lib/format';
 	import type { Concept } from '$lib/supabase/database.types';
 	import type { Analyse } from '$lib/sprint';
@@ -44,11 +45,6 @@
 		return METRIC_VELDEN.some((m) => c[m.key] != null);
 	}
 
-	const funnelKleur: Record<string, string> = {
-		TOFU: 'border-blue-300 bg-blue-100 text-blue-800',
-		MOFU: 'border-amber-300 bg-amber-100 text-amber-800',
-		BOFU: 'border-brand-lime/50 bg-brand-lime/20 text-brand-green'
-	};
 </script>
 
 <div class="space-y-6">
@@ -138,9 +134,9 @@
 				<Card.Root class={cn(c.is_winnaar && 'border-brand-lime/60 bg-brand-lime/5')}>
 					<Card.Content class="space-y-3 pt-6">
 						<div class="flex flex-wrap items-center gap-2">
-							{#if c.funnelfase}
-								<Badge variant="outline" class={cn('font-medium', funnelKleur[c.funnelfase])}>
-									{c.funnelfase}
+							{#if c.funnelfase || c.awareness}
+								<Badge variant="outline" class={cn('font-medium', BEWUSTZIJN_KLEUR[bewustzijnVan(c)])}>
+									{bewustzijnVan(c)}
 								</Badge>
 							{/if}
 							<span class="font-medium">{c.invalshoek || '(geen invalshoek)'}</span>

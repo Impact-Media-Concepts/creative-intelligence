@@ -5,6 +5,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Card from '$lib/components/ui/card';
 	import { cn } from '$lib/utils';
+	import { BEWUSTZIJN_KLEUR, bewustzijnVan } from '$lib/trigger-map';
 	import { saver, postJSON } from '$lib/saver.svelte';
 	import type { Concept } from '$lib/supabase/database.types';
 	import { SCRIPT_BEATS, type Script } from '$lib/productie';
@@ -113,11 +114,6 @@
 		}
 	}
 
-	const funnelKleur: Record<string, string> = {
-		TOFU: 'border-blue-300 bg-blue-100 text-blue-800',
-		MOFU: 'border-amber-300 bg-amber-100 text-amber-800',
-		BOFU: 'border-brand-lime/50 bg-brand-lime/20 text-brand-green'
-	};
 	function dims(c: Rij): string {
 		return [c.aanbod, c.format, c.creator_type].filter(Boolean).join(' · ');
 	}
@@ -167,8 +163,8 @@
 				<Card.Header>
 					<div class="flex flex-wrap items-center justify-between gap-2">
 						<div class="flex items-center gap-2">
-							{#if c.funnelfase}
-								<Badge variant="outline" class={cn('font-medium', funnelKleur[c.funnelfase])}>{c.funnelfase}</Badge>
+							{#if c.funnelfase || c.awareness}
+								<Badge variant="outline" class={cn('font-medium', BEWUSTZIJN_KLEUR[bewustzijnVan(c)])}>{bewustzijnVan(c)}</Badge>
 							{/if}
 							<Card.Title class="text-base">{c.invalshoek || '(geen invalshoek)'}</Card.Title>
 							{#if dims(c)}<span class="text-xs text-muted-foreground">· {dims(c)}</span>{/if}

@@ -1,6 +1,12 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { TRIGGER_MAP_SECTIES, INVALSHOEK_STATUSSEN, SCORE_NIVEAUS } from '$lib/trigger-map';
+import {
+	TRIGGER_MAP_SECTIES,
+	INVALSHOEK_STATUSSEN,
+	SCORE_NIVEAUS,
+	BEWUSTZIJN_LABELS,
+	funnelUitBewustzijn
+} from '$lib/trigger-map';
 import { genereerInvalshoekScores } from '$lib/server/scoring-ai';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 
@@ -53,10 +59,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			const raw = Array.isArray(body.invalshoeken) ? body.invalshoeken : [];
 			const schoon = raw.map((x: Record<string, unknown>) => {
 				const score = schoonScore(x?.score);
+				// Bewustzijnsfase is leidend; de legacy-funnelfase wordt eruit afgeleid zodat
+				// oude kolommen en AI-prompts in sync blijven.
+				const bewustzijn = BEWUSTZIJN_LABELS.includes(x?.bewustzijn as never)
+					? (x.bewustzijn as string)
+					: undefined;
 				return {
 					naam: String(x?.naam ?? ''),
 					omschrijving: String(x?.omschrijving ?? ''),
-					funnelfase: FUNNELFASES.includes(x?.funnelfase as string) ? x.funnelfase : 'TOFU',
+					funnelfase: bewustzijn
+						? funnelUitBewustzijn(bewustzijn)
+						: FUNNELFASES.includes(x?.funnelfase as string)
+							? x.funnelfase
+							: 'TOFU',
+					...(bewustzijn ? { bewustzijn } : {}),
 					onderbouwing: String(x?.onderbouwing ?? ''),
 					status: STATUSSEN.includes(x?.status as string) ? x.status : 'Nieuw',
 					gearchiveerd: !!x?.gearchiveerd,

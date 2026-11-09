@@ -12,6 +12,11 @@
 		INVALSHOEK_STATUSSEN,
 		SCORE_NIVEAUS,
 		SCORE_FACTOREN,
+		BEWUSTZIJN_FASEN,
+		BEWUSTZIJN_LABELS,
+		BEWUSTZIJN_KLEUR,
+		bewustzijnVan,
+		funnelUitBewustzijn,
 		type Invalshoek,
 		type InvalshoekScore,
 		type ScoreNiveau
@@ -23,7 +28,6 @@
 		TEST_VARIABELEN,
 		PRIORITEITEN,
 		CONCEPT_STATUSSEN,
-		AWARENESS_FASEN,
 		CTA_SUGGESTIES,
 		TESTVOLGORDE,
 		sorteerConcepten
@@ -133,6 +137,18 @@
 	function saveVeld(c: Concept, veld: keyof Concept) {
 		return postJSON('/api/concepts', { type: 'update', id: c.id, patch: { [veld]: c[veld] } });
 	}
+	// Bewustzijnsfase is leidend; de legacy-funnelfase wordt eruit afgeleid (één verzoek, in sync).
+	function zetBewustzijn(c: Concept, waarde: string) {
+		c.awareness = waarde || null;
+		if (waarde) c.funnelfase = funnelUitBewustzijn(waarde);
+		return postJSON('/api/concepts', {
+			type: 'update',
+			id: c.id,
+			patch: waarde
+				? { awareness: c.awareness, funnelfase: c.funnelfase }
+				: { awareness: null }
+		});
+	}
 	async function rijToevoegen() {
 		const { concept } = await postJSON<{ concept: Concept }>('/api/concepts', {
 			type: 'insert',
@@ -214,6 +230,7 @@
 			naam: '',
 			omschrijving: '',
 			funnelfase: 'TOFU',
+			bewustzijn: 'Probleembewust',
 			onderbouwing: '',
 			status: 'Nieuw',
 			gearchiveerd: false
@@ -247,11 +264,6 @@
 		}
 	}
 
-	const funnelKleur: Record<string, string> = {
-		TOFU: 'border-blue-300 bg-blue-100 text-blue-800',
-		MOFU: 'border-amber-300 bg-amber-100 text-amber-800',
-		BOFU: 'border-brand-lime/50 bg-brand-lime/20 text-brand-green'
-	};
 	const invStatusKleur: Record<string, string> = {
 		Nieuw: 'border-border bg-muted text-muted-foreground',
 		'In test': 'border-amber-300 bg-amber-100 text-amber-800',
@@ -270,7 +282,8 @@
 				type: 'insert',
 				clientId: data.client.id,
 				concept: {
-					funnelfase: inv.funnelfase,
+					funnelfase: funnelUitBewustzijn(bewustzijnVan(inv)),
+					awareness: bewustzijnVan(inv),
 					invalshoek: inv.naam,
 					hypothese: inv.omschrijving,
 					variabele: 'Invalshoek',
@@ -775,7 +788,7 @@
 					<Textarea
 						bind:value={planFeedback}
 						rows={2}
-						placeholder={'Feedback op het plan… (bijv. "begin met BOFU", "voeg persona X toe", "alleen video")'}
+						placeholder={'Feedback op het plan… (bijv. "begin met productbewust", "voeg persona X toe", "alleen video")'}
 					/>
 					<div class="flex flex-wrap gap-2">
 						<Button variant="outline" onclick={verfijnPlan} disabled={bezigPlan || bezigGoedkeuren || !planFeedback.trim()}>
@@ -880,8 +893,8 @@
 								{:else}
 									<Badge variant="outline" class="text-muted-foreground">niet gescoord</Badge>
 								{/if}
-								<Badge variant="outline" class={cn('font-medium', funnelKleur[inv.funnelfase])}>
-									{inv.funnelfase}
+								<Badge variant="outline" class={cn('font-medium', BEWUSTZIJN_KLEUR[bewustzijnVan(inv)])}>
+									{bewustzijnVan(inv)}
 								</Badge>
 								<span class="font-medium">{inv.naam || '(naamloos)'}</span>
 								<Badge
@@ -928,9 +941,17 @@
 									</div>
 									<div class="grid grid-cols-2 gap-2">
 										<div>
-											<span class="mb-1 block text-xs font-medium text-muted-foreground">Fase</span>
-											<select bind:value={inv.funnelfase} onchange={saveInvalshoeken} class={veldClass}>
-												{#each FUNNELFASES as f (f)}<option value={f}>{f}</option>{/each}
+											<span class="mb-1 block text-xs font-medium text-muted-foreground">Bewustzijnsfase</span>
+											<select
+												value={bewustzijnVan(inv)}
+												onchange={(e) => {
+													inv.bewustzijn = e.currentTarget.value as Invalshoek['bewustzijn'];
+													inv.funnelfase = funnelUitBewustzijn(inv.bewustzijn);
+													saveInvalshoeken();
+												}}
+												class={veldClass}
+											>
+												{#each BEWUSTZIJN_FASEN as f (f.label)}<option value={f.label}>{f.label} — {f.taak}</option>{/each}
 											</select>
 										</div>
 										<div>
@@ -1022,7 +1043,7 @@
 								<div class="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
 									<span>
 										{inv.naam || '(naamloos)'}
-										<span class="text-muted-foreground">· {inv.funnelfase}</span>
+										<span class="text-muted-foreground">· {bewustzijnVan(inv)}</span>
 									</span>
 									<Button variant="ghost" size="sm" onclick={() => invArchiveer(inv, false)}>
 										<ArchiveRestore class="size-4" /> Herstellen
@@ -1131,14 +1152,13 @@
 			class="overflow-x-auto rounded-lg border"
 			data-tour-order="3"
 			data-tour-title="De variabelenmatrix"
-			data-tour-text="Je concrete testconcepten. Sleep rijen (⠿) om de testvolgorde te bepalen; per rij zie je funnelfase, invalshoek, format, hypothese en prioriteit. Dit is de uitvoerlijst voor je sprints."
+			data-tour-text="Je concrete testconcepten. Sleep rijen (⠿) om de testvolgorde te bepalen; per rij zie je bewustzijnsfase, invalshoek, format, hypothese en prioriteit. Dit is de uitvoerlijst voor je sprints."
 		>
 			<table class="w-full min-w-[1560px] border-collapse text-sm">
 				<thead>
 					<tr class="border-b bg-muted/50 text-left text-xs font-medium text-muted-foreground">
 						<th class="w-7 p-2"></th>
-						<th class="w-24 p-2">Funnelfase</th>
-						<th class="w-32 p-2">Awareness</th>
+						<th class="w-40 p-2">Bewustzijnsfase</th>
 						<th class="w-28 p-2">Aanbod</th>
 						<th class="w-56 p-2">Invalshoek</th>
 						<th class="w-32 p-2">Format</th>
@@ -1179,8 +1199,16 @@
 									<GripVertical class="size-4" />
 								</button>
 							</td>
-							<td class="p-2">{@render selectCel(c, 'funnelfase', FUNNELFASES, true)}</td>
-							<td class="p-2">{@render selectCel(c, 'awareness', AWARENESS_FASEN, true)}</td>
+							<td class="p-2">
+								<select
+									value={c.awareness || c.funnelfase ? bewustzijnVan(c) : ''}
+									onchange={(e) => zetBewustzijn(c, e.currentTarget.value)}
+									class={veldClass}
+								>
+									<option value="">—</option>
+									{#each BEWUSTZIJN_FASEN as f (f.label)}<option value={f.label}>{f.label}</option>{/each}
+								</select>
+							</td>
 							<td class="p-2">{@render inputCel(c, 'aanbod', 'Bijv. Longsleeve')}</td>
 							<td class="p-2">{@render textareaCel(c, 'invalshoek', 'Invalshoek', 72)}</td>
 							<td class="p-2">{@render comboCel(c, 'format', 'dl-format')}</td>
@@ -1231,7 +1259,7 @@
 						</tr>
 						{#if uitgeklapt.has(c.id) && c.onderbouwing}
 							<tr class="border-b bg-brand-mint/30">
-								<td colspan="15" class="px-3 py-2">
+								<td colspan="14" class="px-3 py-2">
 									<p class="text-sm">
 										<span class="font-semibold text-brand-green">Waarom dit concept:</span>
 										{c.onderbouwing}
@@ -1264,7 +1292,7 @@
 									{c.status}
 								</Badge>
 								<span>{c.invalshoek || '(geen invalshoek)'}</span>
-								{#if c.funnelfase}<span class="text-muted-foreground">· {c.funnelfase}</span>{/if}
+								{#if c.funnelfase || c.awareness}<span class="text-muted-foreground">· {bewustzijnVan(c)}</span>{/if}
 							</div>
 							<Button variant="ghost" size="sm" onclick={() => herstel(c)}>
 								<ArchiveRestore class="size-4" />
@@ -1367,7 +1395,7 @@
 					<Textarea
 						bind:value={feedback}
 						rows={2}
-						placeholder="Bijv. 'begin met BOFU', 'voeg een aparte sprint voor persona X toe', 'lager budget in sprint 1'…"
+						placeholder="Bijv. 'begin met productbewust', 'voeg een aparte sprint voor persona X toe', 'lager budget in sprint 1'…"
 					/>
 					<Button
 						variant="outline"

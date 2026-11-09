@@ -1,4 +1,5 @@
 import type { Funnelfase, Prioriteit, ConceptStatus } from './supabase/database.types';
+import { BEWUSTZIJN_LABELS, bewustzijnVan } from './trigger-map';
 
 /** Dropdown-opties voor de variabelenmatrix (uit de briefing). */
 export const FUNNELFASES: Funnelfase[] = ['TOFU', 'MOFU', 'BOFU'];
@@ -60,11 +61,16 @@ export const CTA_SUGGESTIES = [
  */
 export const TESTVOLGORDE = ['Invalshoek', 'Format', 'Structuur', 'Creator'] as const;
 
-const FUNNEL_ORDER: Record<string, number> = { TOFU: 0, MOFU: 1, BOFU: 2 };
 const PRIO_ORDER: Record<string, number> = { Hoog: 0, Middel: 1, Laag: 2 };
+
+/** Volgorde Onbewust → Meest bewust; zonder fase (ook geen funnelfase) helemaal achteraan. */
+function bewustzijnRang(c: { awareness?: string | null; funnelfase?: string | null }): number {
+	return c.awareness || c.funnelfase ? BEWUSTZIJN_LABELS.indexOf(bewustzijnVan(c)) : 99;
+}
 
 export interface SorteerbaarConcept {
 	funnelfase: Funnelfase | null;
+	awareness?: string | null;
 	prioriteit: Prioriteit | null;
 	volgorde: number | null;
 	created_at: string;
@@ -72,7 +78,7 @@ export interface SorteerbaarConcept {
 
 /**
  * Sorteert primair op handmatige `volgorde` (slepen); zolang die niet gezet is (null) valt 'ie
- * terug op funnelfase (TOFU→BOFU) → prioriteit (Hoog→Laag) → aanmaakdatum. Zo gedraagt een
+ * terug op bewustzijnsfase (Onbewust→Meest bewust) → prioriteit (Hoog→Laag) → aanmaakdatum. Zo gedraagt een
  * ongeordende matrix zich als voorheen, en neemt zodra je sleept de handmatige volgorde het over.
  */
 export function sorteerConcepten<T extends SorteerbaarConcept>(concepten: T[]): T[] {
@@ -80,8 +86,8 @@ export function sorteerConcepten<T extends SorteerbaarConcept>(concepten: T[]): 
 		const va = a.volgorde ?? Number.MAX_SAFE_INTEGER;
 		const vb = b.volgorde ?? Number.MAX_SAFE_INTEGER;
 		if (va !== vb) return va - vb;
-		const fa = a.funnelfase ? FUNNEL_ORDER[a.funnelfase] : 99;
-		const fb = b.funnelfase ? FUNNEL_ORDER[b.funnelfase] : 99;
+		const fa = bewustzijnRang(a);
+		const fb = bewustzijnRang(b);
 		if (fa !== fb) return fa - fb;
 		const pa = a.prioriteit ? PRIO_ORDER[a.prioriteit] : 99;
 		const pb = b.prioriteit ? PRIO_ORDER[b.prioriteit] : 99;

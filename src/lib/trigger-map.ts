@@ -60,10 +60,77 @@ export const INVALSHOEK_STATUSSEN: InvalshoekStatus[] = [
 
 export const FUNNELFASES: Funnelfase[] = ['TOFU', 'MOFU', 'BOFU'];
 
+/**
+ * Bewustzijnsfases (Eugene Schwartz, "5 stages of awareness") — de zichtbare woordenschat in de
+ * tool. Elke fase heeft een "taak": wat de creative in die fase moet doen. De oude funnelfase
+ * (TOFU/MOFU/BOFU) blijft intern bestaan en wordt hieruit afgeleid (zie funnelUitBewustzijn),
+ * zodat bestaande klanten en AI-prompts blijven werken.
+ */
+export type Bewustzijn =
+	| 'Onbewust'
+	| 'Probleembewust'
+	| 'Oplossingsbewust'
+	| 'Productbewust'
+	| 'Meest bewust';
+
+export const BEWUSTZIJN_FASEN: Array<{
+	label: Bewustzijn;
+	/** Wat de creative in deze fase moet doen. */
+	taak: string;
+	/** Uitleg in gewone taal voor wie geen Social-kennis heeft. */
+	uitleg: string;
+	/** Legacy-funnelfase waar deze fase onder valt. */
+	funnel: Funnelfase;
+	/** Badge-kleur (rand + vulling + tekst), oplopend van koel naar warm-groen. */
+	kleur: string;
+}> = [
+	{ label: 'Onbewust', taak: 'Vertel een verhaal', uitleg: 'Ze weten nog niet dat ze een probleem hebben.', funnel: 'TOFU', kleur: 'border-blue-300 bg-blue-100 text-blue-800' },
+	{ label: 'Probleembewust', taak: 'Benoem de pijn', uitleg: 'Ze voelen het probleem, maar kennen de oplossing niet.', funnel: 'TOFU', kleur: 'border-orange-300 bg-orange-100 text-orange-800' },
+	{ label: 'Oplossingsbewust', taak: 'Jouw aanpak vs. de rest', uitleg: 'Ze zoeken een oplossing en vergelijken opties.', funnel: 'MOFU', kleur: 'border-lime-300 bg-lime-100 text-lime-900' },
+	{ label: 'Productbewust', taak: 'Bewijs & bezwaren', uitleg: 'Ze kennen je product en twijfelen nog.', funnel: 'BOFU', kleur: 'border-brand-lime/50 bg-brand-lime/20 text-brand-green' },
+	{ label: 'Meest bewust', taak: 'Prijs & deadline', uitleg: 'Ze willen eigenlijk al kopen; geef een duw.', funnel: 'BOFU', kleur: 'border-brand-green bg-brand-green text-white' }
+];
+
+export const BEWUSTZIJN_LABELS: Bewustzijn[] = BEWUSTZIJN_FASEN.map((f) => f.label);
+
+/** Badge-kleur per bewustzijnsfase (op label). */
+export const BEWUSTZIJN_KLEUR: Record<string, string> = Object.fromEntries(
+	BEWUSTZIJN_FASEN.map((f) => [f.label, f.kleur])
+);
+
+/** Taak van een bewustzijnsfase (voor tooltips/hulptekst); leeg als onbekend. */
+export function bewustzijnTaak(label: string | null | undefined): string {
+	return BEWUSTZIJN_FASEN.find((f) => f.label === label)?.taak ?? '';
+}
+
+/** Terugval voor oudere data zonder bewustzijn: TOFU→Probleembewust, MOFU→Oplossingsbewust, BOFU→Productbewust. */
+export function bewustzijnUitFunnel(f: string | null | undefined): Bewustzijn {
+	return f === 'BOFU' ? 'Productbewust' : f === 'MOFU' ? 'Oplossingsbewust' : 'Probleembewust';
+}
+
+/** Legacy-funnelfase voor een bewustzijnsfase (houdt de oude kolom/AI-prompts in sync). */
+export function funnelUitBewustzijn(b: string | null | undefined): Funnelfase {
+	return BEWUSTZIJN_FASEN.find((f) => f.label === b)?.funnel ?? 'TOFU';
+}
+
+/** Bewustzijnsfase van een invalshoek of concept: eigen waarde, anders afgeleid uit de funnelfase. */
+export function bewustzijnVan(x: {
+	bewustzijn?: string | null;
+	awareness?: string | null;
+	funnelfase?: string | null;
+}): Bewustzijn {
+	const eigen = x.bewustzijn ?? x.awareness;
+	return BEWUSTZIJN_LABELS.includes(eigen as Bewustzijn)
+		? (eigen as Bewustzijn)
+		: bewustzijnUitFunnel(x.funnelfase);
+}
+
 export interface Invalshoek {
 	naam: string;
 	omschrijving: string;
 	funnelfase: Funnelfase;
+	/** Bewustzijnsfase (zichtbaar in de UI); ontbreekt op oudere data → afgeleid uit funnelfase. */
+	bewustzijn?: Bewustzijn;
 	onderbouwing: string;
 	/** Levenscyclus-status; ontbreekt op oudere data → behandeld als 'Nieuw'. */
 	status?: InvalshoekStatus;

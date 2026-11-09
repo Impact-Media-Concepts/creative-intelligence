@@ -5,6 +5,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { saver, postJSON } from '$lib/saver.svelte';
 	import { cn } from '$lib/utils';
+	import { BEWUSTZIJN_KLEUR, bewustzijnVan } from '$lib/trigger-map';
 	import { page } from '$app/state';
 	import type { Concept } from '$lib/supabase/database.types';
 	import type { Analyse } from '$lib/sprint';
@@ -56,11 +57,6 @@
 
 	const veldClass =
 		'h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none';
-	const funnelKleur: Record<string, string> = {
-		TOFU: 'border-blue-300 bg-blue-100 text-blue-800',
-		MOFU: 'border-amber-300 bg-amber-100 text-amber-800',
-		BOFU: 'border-brand-lime/50 bg-brand-lime/20 text-brand-green'
-	};
 
 	function saveMetrics(c: Concept) {
 		return postJSON('/api/sprint', {
@@ -192,9 +188,9 @@
 				<Card.Header>
 					<div class="flex flex-wrap items-center justify-between gap-2">
 						<div class="flex items-center gap-2">
-							{#if c.funnelfase}
-								<Badge variant="outline" class={cn('font-medium', funnelKleur[c.funnelfase])}>
-									{c.funnelfase}
+							{#if c.funnelfase || c.awareness}
+								<Badge variant="outline" class={cn('font-medium', BEWUSTZIJN_KLEUR[bewustzijnVan(c)])}>
+									{bewustzijnVan(c)}
 								</Badge>
 							{/if}
 							<Card.Title class="text-base">{c.invalshoek || '(geen invalshoek)'}</Card.Title>
