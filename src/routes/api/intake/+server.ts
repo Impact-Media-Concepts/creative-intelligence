@@ -6,6 +6,15 @@ import { parseIntakeDocument, parseIntakeBestand } from '$lib/server/intake-pars
 import type { IntakeParseResultaat } from '$lib/server/intake-parser';
 import { haalPaginaTekst, scanConcurrentWebsite, scanReviews } from '$lib/server/web-scan';
 import { CLAUDE_MODEL } from '$lib/server/claude';
+import { supabaseAdmin } from '$lib/server/supabase-admin';
+import {
+	zoekAdLibrary,
+	filterOpPagina,
+	samenvatAds,
+	appToken,
+	AdLibraryFout
+} from '$lib/server/meta/ad-library';
+import { analyseerAdLibrary } from '$lib/server/ad-library-ai';
 
 type Bron5Insert = Database['public']['Tables']['intake_bron5']['Insert'];
 
@@ -285,6 +294,85 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					response: 'FOUT: ' + msg
 				});
 				error(500, 'Scan mislukt: ' + msg);
+			}
+			break;
+		}
+
+		// Meta Ad Library: advertenties van een concurrent ophalen (officiële API) en laten analyseren.
+		case 'scan_adlibrary': {
+			const id = String(body.id ?? '');
+			const clientId = String(body.clientId ?? '');
+			const naam = String(body.naam ?? '').trim();
+			if (!id) error(400, 'Ontbrekend id');
+			if (!naam) error(400, 'Vul eerst de naam van de concurrent in — dat is de naam van hun Facebook-pagina.');
+
+			// Toegangscontrole: alleen klanten waar deze gebruiker bij mag (RLS), voordat we een klant-token gebruiken.
+			const tokens: Array<{ soort: 'klant' | 'app'; token: string }> = [];
+			if (clientId) {
+				const { data: mag } = await sb.from('clients').select('id').eq('id', clientId).maybeSingle();
+				if (!mag) error(403, 'Geen toegang tot deze klant');
+				const { data: conn } = await supabaseAdmin
+					.from('meta_connections')
+					.select('access_token, losgekoppeld_at')
+					.eq('client_id', clientId)
+					.maybeSingle();
+				if (conn?.access_token && !conn.losgekoppeld_at) tokens.push({ soort: 'klant', token: conn.access_token });
+			}
+			const app = appToken();
+			if (app) tokens.push({ soort: 'app', token: app });
+
+			try {
+				const { ads, toegang } = await zoekAdLibrary({ zoek: naam, tokens });
+				const { ads: eigen, paginas } = filterOpPagina(ads, naam);
+				if (eigen.length === 0) {
+					const alt = paginas.length
+						? ` Gevonden pagina's met deze zoekterm: ${paginas.map((p) => `${p.naam} (${p.aantal})`).join(', ')}. Pas de naam aan naar de exacte paginanaam.`
+						: ' Controleer de spelling van de paginanaam.';
+					throw new AdLibraryFout(`Geen advertenties gevonden voor "${naam}" in Nederland.${alt}`);
+				}
+				const samenvatting = samenvatAds(eigen);
+				const res = await analyseerAdLibrary(samenvatting, naam);
+
+				await sb.from('ai_logs').insert({
+					client_id: clientId || null,
+					gebruiker_id: user.id,
+					module: 'adlibrary_scan',
+					model: res.model,
+					prompt: res.prompt,
+					response: res.response,
+					tokens_input: res.tokensInput,
+					tokens_output: res.tokensOutput,
+					duur_ms: res.duurMs
+				});
+
+				// Links zetten we zelf (niet de AI) zodat er nooit een verzonnen URL in staat.
+				const links = samenvatting.langst
+					.filter((x) => x.snapshot)
+					.slice(0, 5)
+					.map((x) => x.snapshot as string);
+				const datum = new Date().toLocaleDateString('nl-NL');
+				const volledig =
+					res.analyse +
+					(links.length ? `\n\nBekijk de langst lopende ads (check zelf het formaat):\n${links.join('\n')}` : '') +
+					`\n\n(Bron: Meta Ad Library, NL — ${samenvatting.totaal} ads, ${samenvatting.actief} actief, opgehaald op ${datum}.)`;
+
+				const { error: dbFout } = await sb
+					.from('intake_bron3_concurrenten')
+					.update({ meta_ad_library: volledig } as never)
+					.eq('id', id);
+				if (dbFout) error(500, dbFout.message);
+				return json({ meta_ad_library: volledig, aantal: samenvatting.totaal, actief: samenvatting.actief, toegang });
+			} catch (e) {
+				if (e && typeof e === 'object' && 'status' in e && !(e instanceof AdLibraryFout)) throw e; // SvelteKit error() doorgeven
+				const msg = e instanceof Error ? e.message : 'onbekende fout';
+				await sb.from('ai_logs').insert({
+					client_id: clientId || null,
+					gebruiker_id: user.id,
+					module: 'adlibrary_scan',
+					model: CLAUDE_MODEL,
+					response: 'FOUT: ' + msg
+				});
+				error(500, msg);
 			}
 			break;
 		}

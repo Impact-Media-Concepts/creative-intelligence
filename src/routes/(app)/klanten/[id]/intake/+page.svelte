@@ -171,6 +171,33 @@
 		}
 	}
 
+	async function scanAdLibrary(c: (typeof bron3)[number]) {
+		const naam = (c.naam ?? '').trim();
+		if (!naam) {
+			scanFout = 'Vul eerst de naam van de concurrent in (de naam van hun Facebook-pagina).';
+			return;
+		}
+		scanBezig[c.id + ':ad'] = true;
+		scanFout = null;
+		try {
+			const res = await postIntake<{ meta_ad_library: string }>(
+				{ type: 'scan_adlibrary', id: c.id, clientId, naam },
+				{ taak: 'Ad Library-scan' }
+			);
+			c.meta_ad_library = res.meta_ad_library;
+			scanKey[c.id] = (scanKey[c.id] ?? 0) + 1;
+		} catch (e) {
+			const ruw = e instanceof Error ? e.message : 'Scan mislukt';
+			try {
+				scanFout = JSON.parse(ruw)?.message ?? ruw;
+			} catch {
+				scanFout = ruw;
+			}
+		} finally {
+			scanBezig[c.id + ':ad'] = false;
+		}
+	}
+
 	async function scanReviewBron(r: (typeof bron4)[number]) {
 		const url = (reviewUrl[r.id] ?? '').trim();
 		if (!url) {
@@ -813,6 +840,27 @@
 							Haalt de website op en vult invalshoeken, taal en kansen in als voorstel — controleer en
 							pas aan.
 						</p>
+						<div class="mt-3">
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => scanAdLibrary(c)}
+								disabled={scanBezig[c.id + ':ad'] || !c.naam?.trim()}
+							>
+								{#if scanBezig[c.id + ':ad']}
+									<LoaderCircle class="size-4 animate-spin" />
+									Ad Library ophalen…
+								{:else}
+									<Sparkles class="size-4" />
+									Scan Meta Ad Library
+								{/if}
+							</Button>
+							<p class="mt-1 text-xs text-muted-foreground">
+								Haalt de advertenties van deze concurrent (NL) op uit de officiële Meta Ad Library en vult
+								hieronder "Lang draaiende ad formats" in. Gebruik de exacte naam van hun Facebook-pagina.
+								Het formaat (video/static) staat niet in de data — check dat via de links.
+							</p>
+						</div>
 					</div>
 					{#key scanKey[c.id] ?? 0}
 						<div class="mt-3 space-y-3">
