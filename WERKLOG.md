@@ -71,6 +71,11 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-09 — Bottom-up planning (strategie + testplan)
+- **Wat:** de planning-AI (plan van aanpak en testplan) begint nu bij de bewustzijnsfases het dichtst bij conversie (Meest bewust → Productbewust → Oplossingsbewust) en schaalt daarna op naar Probleembewust en Onbewust, tenzij de doelstelling (awareness) of de sturing anders vraagt; de gekozen volgorde wordt kort in `funnelaanpak` benoemd. Past bij de werkwijze uit de klantpresentaties (BOFU eerst, wat daar werkt voedt de bredere fases).
+- **Verificatie:** plan gegenereerd voor testklant: sprints 1-2 Productbewust, 3-4 Oplossingsbewust, 5-6 Probleembewust, 7 Onbewust; Meest bewust overgeslagen omdat er geen invalshoeken zijn (geen opvulling met verzonnen sprints). De standaardsortering van concepten in de matrix/pakket blijft Onbewust → Meest bewust (leesvolgorde); alleen de plan-volgorde is bottom-up.
+- **Migratie:** geen.
+
 ### 2026-11-09 — Meta Ad Library-scan in de intake (concurrenten)
 - **Wat:** bij elke concurrent in Bron 3 een knop "Scan Meta Ad Library". Haalt de advertenties van die concurrent (NL) op via de **officiële** Ad Library API (`/ads_archive`, geen scraping), filtert op de juiste Facebook-pagina, rekent zelf looptijden/volume/platformen uit en laat de AI daar een korte analyse van schrijven (actief, langst lopend = winnaar-**indicatie**, terugkerende hoeken, aanbod/CTA, tempo). Resultaat komt in het bestaande veld "Lang draaiende ad formats (Meta Ad Library)" en is bewerkbaar. Snapshot-links worden door de code toegevoegd, niet door de AI (geen verzonnen URL's).
 - **Bouw:** `src/lib/server/meta/ad-library.ts` (API + foutvertaling, probeert eerst het Meta-token van de klant, daarna het app-token `META_APP_ID|META_APP_SECRET`), `src/lib/ad-library-analyse.ts` (zuivere rekenlogica, client-safe), `src/lib/server/ad-library-ai.ts` (prompt), API `/api/intake` type `scan_adlibrary` (met toegangscontrole op de klant vóór het klant-token wordt gebruikt), knop in de intake-pagina.

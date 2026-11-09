@@ -85,6 +85,7 @@ METHODE — schoon testen (STRIKT):
 - DATA-GEDREVEN, niet padden: plan alleen tests die de data rechtvaardigt. Passen alle relevante invalshoeken van een fase in één test (≤ max varianten)? Doe dan ÉÉN invalshoek-test en ga daarna door naar de volgende variabele (format/structuur/creator) op de winnaar. Verzin GEEN extra rondes om het plan te vullen.
 - Zijn er MEER relevante invalshoeken dan de max varianten per test? Plan dan meerdere invalshoek-rondes (winnaar draagt door → volgende batch) vóór je naar de volgende variabele gaat.
 - Respecteer de "max varianten per test" uit de sturing (default 3 als niet opgegeven).
+- BOTTOM-UP VOLGORDE: begin bij de bewustzijnsfases het dichtst bij conversie (Meest bewust → Productbewust → Oplossingsbewust) en schaal pas daarna op naar Probleembewust en Onbewust. Reden: de warmste doelgroep levert het snelst en het zekerst resultaat, en wat daar werkt voedt de bredere fases. Wijk alleen af als de doelstelling (bv. awareness) of de sturing dat vraagt, en benoem de gekozen volgorde kort in "funnelaanpak".
 
 PARALLEL & RONDES ("ronde"):
 - Geef elke sprint een "ronde"-nummer. Sprints met hetzelfde rondenummer draaien PARALLEL.

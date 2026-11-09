@@ -59,7 +59,7 @@ Geef output ALLEEN als valide JSON in dit formaat:
 
 Richtlijnen:
 - Bouw het plan rond de persona's: activeer per sprint (een van) de persona's, en verwijs in "concepten" naar de invalshoeken uit de matrix die daarbij horen.
-- Eerste sprints: test de INVALSHOEK per bewustzijnsfase (dat is de eerste variabele). Latere sprints: optimaliseer format/structuur/creator van de winnende invalshoek.
+- Eerste sprints: test de INVALSHOEK per bewustzijnsfase (dat is de eerste variabele), bottom-up: begin bij de fases het dichtst bij conversie (Meest bewust/Productbewust/Oplossingsbewust) en schaal daarna op naar Probleembewust en Onbewust. Latere sprints: optimaliseer format/structuur/creator van de winnende invalshoek.
 - Dek de bewustzijnsfases af die in de matrix voorkomen; wees concreet over succescriteria (hook rate, CTR, ROAS, CPA, saves) passend bij de fase (vroege fases: hook rate/CTR/saves; late fases: ROAS/CPA).
 - Houd het realistisch: 4-6 sprints, oplopende budgetten, korte duur per sprint.
 - "concepten" bevat de namen van de invalshoeken/concepten uit de aangeleverde matrix — verzin geen nieuwe.
