@@ -31,7 +31,21 @@
 		props: string | null;
 	}
 
-	let { concept, merknaam, base }: { concept: BladConcept; merknaam: string; base: string } = $props();
+	let {
+		concept,
+		merknaam,
+		base,
+		toonLinks = true,
+		onBeeld
+	}: {
+		concept: BladConcept;
+		merknaam: string;
+		base: string;
+		/** Verberg de doorverwijzingen naar de Creatie-tab als dit blad al in die tab staat. */
+		toonLinks?: boolean;
+		/** Meldt de beeldaanwijzingen terug (na opslaan of genereren), zodat de pagina eromheen synchroon blijft. */
+		onBeeld?: (b: Partial<Record<ScriptBeat, string>>) => void;
+	} = $props();
 
 	const fase = $derived(bewustzijnVan(concept));
 	const soort = $derived(bladSoort(concept.format));
@@ -43,6 +57,10 @@
 	let fout = $state<string | null>(null);
 
 	const script = $derived(leesScriptMetBeeld(concept.script));
+	// Wijzigingen van buitenaf (bv. "maak alles" in de Creatie-tab) komen hier ook binnen.
+	$effect(() => {
+		beeld = { ...(script?.beeld ?? {}) };
+	});
 	const scenes = $derived(script ? bouwScenes(script, soort, beeld) : []);
 	const brief = $derived(concept.brief && typeof concept.brief === 'object' ? (concept.brief as Partial<Brief>) : null);
 	const benodigdheden = $derived(splitProps(concept.props));
@@ -78,6 +96,7 @@
 				id: concept.id,
 				script: { ...script, beeld }
 			});
+			onBeeld?.({ ...beeld });
 		} catch (e) {
 			fout = leesFout(e);
 		}
@@ -93,6 +112,7 @@
 				{ taak: 'Beeldaanwijzing maken' }
 			);
 			beeld = { ...res.beeld };
+			onBeeld?.({ ...beeld });
 		} catch (e) {
 			fout = leesFout(e);
 		} finally {
@@ -129,9 +149,11 @@
 					{#if bezig}<LoaderCircle class="size-3.5 animate-spin" /> Bezig…{:else}<Sparkles class="size-3.5" /> {heeftBeeld ? 'Opnieuw voorstellen' : 'Beeldaanwijzing voorstellen'}{/if}
 				</button>
 			{/if}
-			<a href="{base}/productie" class="inline-flex items-center gap-1.5 rounded-full border bg-card px-4 py-2 text-[12.5px] font-semibold text-brand-green transition-colors hover:bg-brand-mint/50">
-				Script aanpassen <ArrowRight class="size-3.5" />
-			</a>
+			{#if toonLinks}
+				<a href="{base}/productie" class="inline-flex items-center gap-1.5 rounded-full border bg-card px-4 py-2 text-[12.5px] font-semibold text-brand-green transition-colors hover:bg-brand-mint/50">
+					Script aanpassen <ArrowRight class="size-3.5" />
+				</a>
+			{/if}
 		</div>
 	</header>
 
@@ -141,7 +163,9 @@
 		<div class="mt-4 rounded-[18px] border border-dashed px-5 py-8 text-center">
 			<p class="font-display text-base font-bold text-brand-green">Nog geen script</p>
 			<p class="mx-auto mt-1 max-w-sm text-[13px] text-muted-foreground">Het storyboard bouwt op het script. Schrijf of genereer dat eerst in de Creatie-tab.</p>
-			<a href="{base}/productie" class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-green px-4 py-2 text-[12.5px] font-semibold text-white print:hidden">Naar de creatie <ArrowRight class="size-3.5" /></a>
+			{#if toonLinks}
+				<a href="{base}/productie" class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-green px-4 py-2 text-[12.5px] font-semibold text-white print:hidden">Naar de creatie <ArrowRight class="size-3.5" /></a>
+			{/if}
 		</div>
 	{:else}
 		<!-- De scènes -->

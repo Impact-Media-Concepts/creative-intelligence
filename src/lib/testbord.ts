@@ -125,10 +125,10 @@ export function bouwTestbord(concepten: TestbordConcept[]): TestbordDoel[] {
  * Splitst de concepten in "deze ronde" en "eerdere varianten". Zolang er nog geen rondenummers zijn
  * (migratie 0017 niet gedraaid of nog geen set gemaakt), hoort alles bij de huidige ronde.
  */
-export function splitsRonde(concepten: TestbordConcept[]): {
+export function splitsRonde<T extends { ronde?: number | null }>(concepten: T[]): {
 	huidig: number | null;
-	actueel: TestbordConcept[];
-	eerder: TestbordConcept[];
+	actueel: T[];
+	eerder: T[];
 } {
 	const nummers = concepten.map((c) => c.ronde).filter((n): n is number => typeof n === 'number');
 	if (nummers.length === 0) return { huidig: null, actueel: concepten, eerder: [] };
