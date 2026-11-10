@@ -1,5 +1,5 @@
 import { claudeJSON } from './claude';
-import type { Script, Advertentie } from '$lib/productie';
+import type { Script, Advertentie, ScriptBeat } from '$lib/productie';
 import { bewustzijnVan } from '$lib/trigger-map';
 
 const SCHEMA = {
@@ -145,4 +145,59 @@ Context uit de trigger map:
 		omschrijving: String(res.data.omschrijving ?? '').trim().slice(0, 90)
 	};
 	return { ...res, advertentie };
+}
+
+const BEELD_SCHEMA = {
+	type: 'object',
+	additionalProperties: false,
+	properties: {
+		hook: { type: 'string' },
+		probleem: { type: 'string' },
+		oplossing: { type: 'string' },
+		resultaat: { type: 'string' },
+		cta: { type: 'string' }
+	},
+	required: ['hook', 'probleem', 'oplossing', 'resultaat', 'cta']
+};
+
+const BEELD_SYSTEM = `Je bent een regisseur/art director bij een Social Ads bureau. Je maakt bij een bestaand 5-beats script een BEELDAANWIJZING per scène, zodat een designer, editor of creator zonder verdere uitleg weet wat er in beeld moet staan.
+
+Geef UITSLUITEND JSON: {"hook":"...","probleem":"...","oplossing":"...","resultaat":"...","cta":"..."}
+
+Per scène maximaal ±25 woorden, concreet en visueel: kader (close-up/medium/totaal), setting, wat de persoon doet of wat er te zien is, en eventuele tekst in beeld. Nederlands.
+
+Regels:
+- Gebruik het script, de invalshoek, het format en de creator; verzin GEEN feiten, cijfers, locaties of merkclaims die niet in de aangeleverde data staan.
+- Zet geen gesproken tekst in de aanwijzing: die staat al in het script. Beschrijf alleen wat je ZIET (en tekst-in-beeld).
+- Statisch format: beschrijf de compositie per element in plaats van handelingen ("hook" = het eye-catcher-beeld, "cta" = hoe de knop/beloftetekst in beeld staat).
+- Carousel: elke scène is één kaart; beschrijf het beeld van die kaart.
+- Video/UGC/motion: denk aan verticaal 9:16 en bewaar de volgorde van de beats.`;
+
+export type Beeldaanwijzing = Record<ScriptBeat, string>;
+
+/** Schrijft per scène een beeldaanwijzing bij het (al bestaande) script van één concept. */
+export async function genereerBeeldaanwijzing(concept: ScriptConcept & { script?: unknown }, tm: TmContext) {
+	const lijst = (v?: string[]) => (v && v.length ? v.join('; ') : '—');
+	const s = (concept.script && typeof concept.script === 'object' ? concept.script : {}) as Record<string, unknown>;
+	const beat = (k: string) => (s[k] ? String(s[k]) : '—');
+	const fase = concept.funnelfase || concept.awareness ? bewustzijnVan(concept) : '—';
+	const prompt =
+		`Maak de beeldaanwijzing voor dit concept:\n` +
+		`- Bewustzijnsfase: ${fase}\n` +
+		`- Invalshoek: ${concept.invalshoek || '—'}\n` +
+		`- Format: ${concept.format || '—'} · Structuur: ${concept.structuur || '—'} · Creator: ${concept.creator_type || '—'}\n\n` +
+		`Script:\n- Hook: ${beat('hook')}\n- Probleem: ${beat('probleem')}\n- Oplossing: ${beat('oplossing')}\n- Resultaat: ${beat('resultaat')}\n- CTA: ${beat('cta')}\n\n` +
+		`Context uit de trigger map:\n- Pijnpunten: ${lijst(tm.pijnpunten)}\n- Taal doelgroep: ${lijst(tm.taal_doelgroep)}`;
+
+	const res = await claudeJSON<Partial<Beeldaanwijzing>>(BEELD_SYSTEM, prompt, BEELD_SCHEMA, 1800, 'low');
+	// De proxy dwingt het schema niet af → valideren en begrenzen.
+	const clip = (v: unknown) => String(v ?? '').trim().slice(0, 400);
+	const beeld: Beeldaanwijzing = {
+		hook: clip(res.data.hook),
+		probleem: clip(res.data.probleem),
+		oplossing: clip(res.data.oplossing),
+		resultaat: clip(res.data.resultaat),
+		cta: clip(res.data.cta)
+	};
+	return { ...res, beeld };
 }

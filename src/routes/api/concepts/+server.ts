@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import type { Database } from '$lib/supabase/database.types';
 import { FUNNELFASES, PRIORITEITEN, CONCEPT_STATUSSEN } from '$lib/matrix';
 import { genereerMatrix } from '$lib/server/matrix-ai';
-import { genereerScript, genereerAdvertentie } from '$lib/server/productie-ai';
+import { genereerScript, genereerAdvertentie, genereerBeeldaanwijzing } from '$lib/server/productie-ai';
 import { normAdvertentie } from '$lib/productie';
 import { CLAUDE_MODEL } from '$lib/server/claude';
 import { afgeleidePrioriteit, bewustzijnVan, type InvalshoekScore } from '$lib/trigger-map';
@@ -26,6 +26,16 @@ function schoonScript(v: unknown): Record<string, unknown> {
 		// De advertentietekst leeft in hetzelfde JSON-veld en mag nooit stilletjes verdwijnen.
 		const ad = (v as Record<string, unknown>).advertentie;
 		if (ad && typeof ad === 'object') uit.advertentie = normAdvertentie(ad);
+		// Idem voor de beeldaanwijzingen per scène (storyboard).
+		const beeld = (v as Record<string, unknown>).beeld;
+		if (beeld && typeof beeld === 'object') {
+			const b: Record<string, string> = {};
+			for (const k of SCRIPT_KEYS) {
+				const t = (beeld as Record<string, unknown>)[k];
+				if (t != null && String(t).trim()) b[k] = String(t).slice(0, 600);
+			}
+			if (Object.keys(b).length) uit.beeld = b;
+		}
 	}
 	return uit;
 }
@@ -420,9 +430,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				});
 				// Alleen de 5 beats worden opnieuw geschreven; een bestaande advertentietekst blijft staan.
 				const bestaandAd = (concept.script as { advertentie?: unknown } | null)?.advertentie;
+				const bestaandBeeld = schoonScript(concept.script).beeld;
 				const samengevoegd = {
 					...res.data,
-					...(bestaandAd ? { advertentie: normAdvertentie(bestaandAd) } : {})
+					...(bestaandAd ? { advertentie: normAdvertentie(bestaandAd) } : {}),
+					...(bestaandBeeld ? { beeld: bestaandBeeld } : {})
 				};
 				await supabase
 					.from('concepts')
@@ -450,6 +462,59 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					response: 'FOUT: ' + msg
 				});
 				error(500, 'Script genereren mislukt: ' + msg);
+			}
+			break;
+		}
+
+		// Storyboard: per scène een beeldaanwijzing laten schrijven (bij een bestaand script).
+		case 'beeld_gen': {
+			const id = String(body.id ?? '');
+			if (!id) error(400, 'Ontbrekend id');
+			const { data: concept } = await supabase.from('concepts').select('*').eq('id', id).single();
+			if (!concept) error(404, 'Concept niet gevonden');
+			const huidig = schoonScript(concept.script);
+			if (!SCRIPT_KEYS.some((k) => String(huidig[k] ?? '').trim())) error(400, 'Schrijf of genereer eerst het script; de beeldaanwijzing bouwt daarop voort.');
+
+			const { data: tm } = await supabase
+				.from('trigger_map_versions')
+				.select('pijnpunten, wensen, bezwaren, taal_doelgroep')
+				.eq('client_id', concept.client_id)
+				.eq('is_actief', true)
+				.maybeSingle();
+
+			try {
+				const res = await genereerBeeldaanwijzing(concept, {
+					pijnpunten: (tm?.pijnpunten as string[]) ?? [],
+					wensen: (tm?.wensen as string[]) ?? [],
+					bezwaren: (tm?.bezwaren as string[]) ?? [],
+					taal_doelgroep: (tm?.taal_doelgroep as string[]) ?? []
+				});
+				await supabase
+					.from('concepts')
+					.update({ script: { ...huidig, beeld: res.beeld } as never })
+					.eq('id', id);
+				await supabase.from('ai_logs').insert({
+					client_id: concept.client_id,
+					gebruiker_id: user.id,
+					module: 'beeldaanwijzing',
+					model: res.model,
+					prompt: res.prompt,
+					response: res.response,
+					tokens_input: res.tokensInput,
+					tokens_output: res.tokensOutput,
+					duur_ms: res.duurMs
+				});
+				return json({ beeld: res.beeld });
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : 'onbekende fout';
+				await supabase.from('ai_logs').insert({
+					client_id: concept.client_id,
+					gebruiker_id: user.id,
+					module: 'beeldaanwijzing',
+					model: CLAUDE_MODEL,
+					response: 'FOUT: ' + msg
+				});
+				error(500, 'Beeldaanwijzing maken mislukt: ' + msg);
 			}
 			break;
 		}

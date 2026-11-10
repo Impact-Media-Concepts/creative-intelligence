@@ -9,6 +9,8 @@ export interface Script {
 	cta: string;
 	/** Advertentietekst (feed/story); optioneel, bewaard in hetzelfde JSON-veld (geen migratie nodig). */
 	advertentie?: Advertentie;
+	/** Beeldaanwijzing per scène (wat zie je in beeld?); optioneel, bewaard in hetzelfde JSON-veld. */
+	beeld?: Partial<Record<ScriptBeat, string>>;
 }
 
 /** De drie tekstvelden van een Meta-advertentie. */
@@ -52,7 +54,7 @@ export const LEEG_SCRIPT: Script = {
 };
 
 /** De vijf beats van het script (zonder de advertentietekst). */
-export type ScriptBeat = Exclude<keyof Script, 'advertentie'>;
+export type ScriptBeat = Exclude<keyof Script, 'advertentie' | 'beeld'>;
 
 /** Labels + rendervolgorde van de script-beats. */
 export const SCRIPT_BEATS: Array<{ key: ScriptBeat; label: string; hint: string }> = [
