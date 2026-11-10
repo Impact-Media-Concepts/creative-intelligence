@@ -49,10 +49,12 @@ export class AdLibraryFout extends Error {
 /** Vertaalt een Graph-fout naar een begrijpelijke, actiegerichte melding. */
 function vertaalFout(status: number, body: string): AdLibraryFout {
 	let code = 0;
+	let sub = 0;
 	let msg = '';
 	try {
-		const j = JSON.parse(body) as { error?: { code?: number; message?: string } };
+		const j = JSON.parse(body) as { error?: { code?: number; error_subcode?: number; message?: string } };
 		code = j.error?.code ?? 0;
+		sub = j.error?.error_subcode ?? 0;
 		msg = j.error?.message ?? '';
 	} catch {
 		// geen JSON
@@ -61,7 +63,7 @@ function vertaalFout(status: number, body: string): AdLibraryFout {
 		return new AdLibraryFout('Het Meta-token is verlopen of ongeldig. Koppel Meta opnieuw (Sprint → Meta-koppeling).', true);
 	if (code === 10 || code === 200 || /permission|not authorized|verif/i.test(msg))
 		return new AdLibraryFout(
-			'Meta geeft deze app of dit account nog geen toegang tot de Ad Library API. Bevestig je identiteit op facebook.com/ID en accepteer de voorwaarden op facebook.com/ads/library/api — of vul dit veld handmatig in.',
+			`Meta geeft deze app of dit account nog geen toegang tot de Ad Library API. Bevestig je identiteit op facebook.com/ID en accepteer de voorwaarden op facebook.com/ads/library/api — of vul dit veld handmatig in. (Meta: ${code}${sub ? `/${sub}` : ''} — ${msg.slice(0, 220)})`,
 			true
 		);
 	if (status === 429 || code === 4 || code === 17 || code === 613)
