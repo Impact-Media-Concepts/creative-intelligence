@@ -94,6 +94,19 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			return json({ ok: true });
 		}
 
+		case 'doel_zetten': {
+			// Verhuist een hele test (alle varianten) naar een ander campagnedoel (Aankoop, Leads, Traffic, …).
+			const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).filter(Boolean).slice(0, 200);
+			const doel = String(body.doel ?? '').trim().slice(0, 40);
+			if (ids.length === 0 || !doel) error(400, 'Ontbrekende gegevens');
+			const { error: dbFout } = await supabase.from('concepts').update({ doel } as never).in('id', ids);
+			if (dbFout) {
+				if (/doel/i.test(dbFout.message)) error(500, 'Het doel kan nog niet worden opgeslagen: draai eerst migratie 0016 in Supabase.');
+				error(500, dbFout.message);
+			}
+			return json({ ok: true });
+		}
+
 		case 'dupliceer': {
 			const id = String(body.id ?? '');
 			if (!id) error(400, 'Ontbrekend id');

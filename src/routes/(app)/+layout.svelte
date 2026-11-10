@@ -34,7 +34,7 @@
 						['Intake', '/intake'],
 						['Trigger Map', '/triggermap'],
 						['Testruimte', '/testruimte'],
-						['Matrix', '/matrix'],
+						['Testbord', '/testbord'],
 						['Creatie', '/productie'],
 						['Sprint', '/sprint'],
 						['Learnings', '/learnings']
@@ -44,6 +44,7 @@
 	);
 	function faseActief(href: string): boolean {
 		const b = `/klanten/${klantId}`;
+		if (href === `${b}/testbord`) return pad.startsWith(href) || pad.startsWith(`${b}/matrix`);
 		return href === b ? pad === b : pad.startsWith(href);
 	}
 	// ✓ = echte voortgang van de klant (clients.huidige_fase), niet de pagina waar je nu bent.
