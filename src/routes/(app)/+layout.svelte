@@ -37,7 +37,6 @@
 						['Testruimte', '/testruimte'],
 						['Testbord', '/testbord'],
 						['Creatie', '/productie'],
-						['Sprint', '/sprint'],
 						['Learnings', '/learnings']
 					] as const
 				).map(([label, sub]) => ({ label, href: `/klanten/${klantId}${sub}` }))
@@ -45,7 +44,7 @@
 	);
 	function faseActief(href: string): boolean {
 		const b = `/klanten/${klantId}`;
-		if (href === `${b}/testbord`) return pad.startsWith(href) || pad.startsWith(`${b}/matrix`);
+		if (href === `${b}/testbord`) return pad.startsWith(href) || pad.startsWith(`${b}/matrix`) || pad.startsWith(`${b}/sprint`);
 		return href === b ? pad === b : pad.startsWith(href);
 	}
 	// ✓ = echte voortgang van de klant (clients.huidige_fase), niet de pagina waar je nu bent.

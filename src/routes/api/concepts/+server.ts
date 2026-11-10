@@ -6,6 +6,7 @@ import { genereerMatrix } from '$lib/server/matrix-ai';
 import { genereerScript, genereerAdvertentie, genereerBeeldaanwijzing } from '$lib/server/productie-ai';
 import { normAdvertentie } from '$lib/productie';
 import { CLAUDE_MODEL } from '$lib/server/claude';
+import { volgendeRonde, plaatsConcepten } from '$lib/server/ronde';
 import { afgeleidePrioriteit, bewustzijnVan, type InvalshoekScore } from '$lib/trigger-map';
 
 type ConceptInsert = Database['public']['Tables']['concepts']['Insert'];
@@ -381,7 +382,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 				status: 'Idee'
 			}));
 
-			const { data, error: dbFout } = await supabase.from('concepts').insert(rijen).select('*');
+			const ronde = await volgendeRonde(supabase, clientId);
+			const { data, error: dbFout } = await plaatsConcepten(supabase, rijen as unknown as Array<Record<string, unknown>>, ronde);
 			if (dbFout || !data) error(500, dbFout?.message ?? 'Aanmaken mislukt');
 
 			const { data: client } = await supabase

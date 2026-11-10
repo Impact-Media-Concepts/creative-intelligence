@@ -73,6 +73,8 @@ export interface GroepResultaat {
 	uitleg: string;
 	zekerheid: Zekerheid | null;
 	leiderId: string | null;
+	/** Hoeveel % van de test erop zit (0–100): 100 = klaar om te beslissen of beslist. null = handmatig (geen Meta-cijfers). */
+	voortgangPct: number | null;
 	leden: LidResultaat[];
 }
 
@@ -157,6 +159,25 @@ function zekerheidVan(z: number | null): Zekerheid | null {
 	return az >= 1.96 ? 'zeker' : az >= 1.28 ? 'waarschijnlijk' : 'te_vroeg';
 }
 
+/**
+ * Hoeveel procent van de test erop zit: het gemiddelde van de drempels (spend, vertoningen, dagen, aankopen)
+ * van de twee varianten die om de winst strijden; de zwakste van die twee telt. Vol (100%) pas als de test klaar
+ * of beslist is; ervoor loopt de balk maximaal tot 95%, omdat ook de voorsprong en de zekerheid moeten kloppen.
+ */
+function groepVoortgang(leden: LidResultaat[], status: GroepStatus): number | null {
+	if (status === 'winnaar' || status === 'klaar') return 100;
+	const metMeta = leden.filter((l) => l.voortgang && l.waarde != null).slice(0, 2);
+	if (metMeta.length === 0) return null;
+	const deel = (l: LidResultaat) => {
+		const v = l.voortgang ?? [];
+		if (!v.length) return 0;
+		return v.reduce((som, x) => som + (x.doel > 0 ? Math.min(1, x.nu / x.doel) : 1), 0) / v.length;
+	};
+	let p = Math.min(...metMeta.map(deel));
+	if (metMeta.length < 2) p *= 0.5; // met één variant is er niets om mee te vergelijken
+	return Math.min(95, Math.round(p * 100));
+}
+
 /** Rekent alle testgroepen door. Groepen met minstens één cijfer komen bovenaan. */
 export function berekenResultaten(concepten: ResConcept[]): GroepResultaat[] {
 	const groepen = new Map<string, ResConcept[]>();
@@ -215,6 +236,7 @@ export function berekenResultaten(concepten: ResConcept[]): GroepResultaat[] {
 				uitleg: 'Koppel de advertenties aan Meta of vul de cijfers per concept in om te vergelijken.',
 				zekerheid: null,
 				leiderId: null,
+				voortgangPct: leden.some((c) => c.is_winnaar) ? 100 : null,
 				leden: leden.map((c) => maakLid(c, c.is_winnaar ? 'winnaar' : 'geen_data', '', null))
 			});
 			continue;
@@ -341,6 +363,7 @@ export function berekenResultaten(concepten: ResConcept[]): GroepResultaat[] {
 			uitleg,
 			zekerheid,
 			leiderId: leider?.id ?? null,
+			voortgangPct: groepVoortgang(ledenUit, status),
 			leden: ledenUit
 		});
 	}

@@ -1,4 +1,5 @@
 import { json, error } from '@sveltejs/kit';
+import { volgendeRonde, plaatsConcepten } from '$lib/server/ronde';
 import type { RequestHandler } from './$types';
 import type { Database, Json } from '$lib/supabase/database.types';
 import { genereerBrief, analyseerResultaat, genereerVolgendeTestronde } from '$lib/server/sprint-ai';
@@ -297,7 +298,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 					variabele: volgende,
 					status: 'Idee'
 				}));
-				const { data, error: dbFout } = await supabase.from('concepts').insert(rijen).select('*');
+				const ronde = await volgendeRonde(supabase, bron.client_id);
+				const { data, error: dbFout } = await plaatsConcepten(supabase, rijen as unknown as Array<Record<string, unknown>>, ronde);
 				if (dbFout || !data) error(500, dbFout?.message ?? 'Opslaan mislukt');
 				return json({ concepten: data, volgendeVariabele: volgende });
 			} catch (e) {

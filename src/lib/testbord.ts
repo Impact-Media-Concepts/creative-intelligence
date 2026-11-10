@@ -36,6 +36,10 @@ export interface TestbordConcept extends ResConcept {
 	cta: string | null;
 	status: string;
 	script?: unknown;
+	hold_rate?: number | null;
+	observatie?: string | null;
+	/** Rondenummer van de test (migratie 0017); null = van vóór de rondes. */
+	ronde?: number | null;
 }
 
 export interface TestbordVariant {
@@ -115,4 +119,23 @@ export function bouwTestbord(concepten: TestbordConcept[]): TestbordDoel[] {
 		const info = bekend.get(sleutel) ?? { sleutel, label: sleutel, uitleg: 'Eigen doel: bepaal zelf waarop je de varianten vergelijkt.' };
 		return { ...info, tests, aantalVarianten: leden.length };
 	});
+}
+
+/**
+ * Splitst de concepten in "deze ronde" en "eerdere varianten". Zolang er nog geen rondenummers zijn
+ * (migratie 0017 niet gedraaid of nog geen set gemaakt), hoort alles bij de huidige ronde.
+ */
+export function splitsRonde(concepten: TestbordConcept[]): {
+	huidig: number | null;
+	actueel: TestbordConcept[];
+	eerder: TestbordConcept[];
+} {
+	const nummers = concepten.map((c) => c.ronde).filter((n): n is number => typeof n === 'number');
+	if (nummers.length === 0) return { huidig: null, actueel: concepten, eerder: [] };
+	const huidig = Math.max(...nummers);
+	return {
+		huidig,
+		actueel: concepten.filter((c) => c.ronde === huidig),
+		eerder: concepten.filter((c) => c.ronde !== huidig)
+	};
 }

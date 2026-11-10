@@ -80,8 +80,8 @@ export function bouwLoop(i: LoopInvoer): LoopStap[] {
 			naam: 'Testen',
 			taak: 'Zet live en volg wie voorloopt en wie achterloopt.',
 			stand: i.live > 0 ? `${i.live} live · ${i.getest} getest` : i.getest > 0 ? `${i.getest} getest` : 'Nog niets live',
-			pad: '/sprint',
-			actie: 'Naar de resultaten'
+			pad: '/testbord',
+			actie: 'Naar het testbord'
 		},
 		{
 			sleutel: 'leren',

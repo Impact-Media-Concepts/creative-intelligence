@@ -114,12 +114,12 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 				? {
 						label: 'Zet live en voer de resultaten in',
 						hint: 'Vul de metrics in (of koppel Meta) en laat Claude de learning bepalen.',
-						tab: 'sprint'
+						tab: 'testbord'
 					}
 				: {
 						label: 'Bekijk de stand van de test',
 						hint: 'Wie loopt voor, wie achter, en is er al een winnaar?',
-						tab: 'sprint'
+						tab: 'testbord'
 					},
 		leren: {
 			label: 'Bekijk learnings & kies de winnaars',
