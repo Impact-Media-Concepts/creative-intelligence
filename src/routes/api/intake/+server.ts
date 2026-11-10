@@ -1,4 +1,5 @@
 import { json, error } from '@sveltejs/kit';
+import { leesBureauToken } from '$lib/server/meta/bureau-token';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/supabase/database.types';
 import { BRON1_VRAGEN, BRON2_VRAGEN } from '$lib/intake-vragen';
@@ -307,7 +308,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, user }
 			if (!naam) error(400, 'Vul eerst de naam van de concurrent in — dat is de naam van hun Facebook-pagina.');
 
 			// Toegangscontrole: alleen klanten waar deze gebruiker bij mag (RLS), voordat we een klant-token gebruiken.
-			const tokens: Array<{ soort: 'klant' | 'app'; token: string }> = [];
+			const tokens: Array<{ soort: 'bureau' | 'klant' | 'app'; token: string }> = [];
+			// 1e keus: het Ad Library-token van het bureau (een persoon met bevestigde identiteit). Meta weigert het app-token.
+			const bureau = await leesBureauToken();
+			if (bureau) tokens.push({ soort: 'bureau', token: bureau });
 			if (clientId) {
 				const { data: mag } = await sb.from('clients').select('id').eq('id', clientId).maybeSingle();
 				if (!mag) error(403, 'Geen toegang tot deze klant');

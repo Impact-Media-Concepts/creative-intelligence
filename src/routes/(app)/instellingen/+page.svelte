@@ -9,9 +9,11 @@
 	import { cn } from '$lib/utils';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import KeyRound from '@lucide/svelte/icons/key-round';
 
 	let { data, form } = $props();
 	let bezig = $state(false);
+	let bezigToken = $state(false);
 
 	const veldClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none';
@@ -20,6 +22,11 @@
 {#if form?.foutmelding}
 	<div class="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
 		{form.foutmelding}
+	</div>
+{/if}
+{#if form?.adlibOk}
+	<div class="mb-4 rounded-md px-3 py-2 text-sm {form.adlibGetest ? 'bg-brand-lime/15 text-brand-green' : 'bg-destructive/10 text-destructive'}">
+		Token opgeslagen{form.adlibVerloopt ? ` (geldig tot ${datumKort(form.adlibVerloopt)})` : ''}. {form.adlibGetest ? 'Test geslaagd: ' : 'Let op, de test mislukte: '}{form.adlibMelding}
 	</div>
 {/if}
 {#if form?.aangemaakt}
@@ -145,6 +152,54 @@
 				<Button type="submit" class="w-full" disabled={bezig}>
 					<UserPlus class="size-4" />
 					{bezig ? 'Bezig…' : 'Gebruiker aanmaken'}
+				</Button>
+			</form>
+		</Card.Content>
+	</Card.Root>
+	<!-- Meta Ad Library-token -->
+	<Card.Root class="lg:col-span-3">
+		<Card.Header>
+			<Card.Title>Meta Ad Library</Card.Title>
+			<Card.Description>
+				Voor de scan van concurrent-advertenties in de intake. Meta laat alleen een persoon met bevestigde identiteit de
+				Ad Library gebruiken, daarom werkt dit met een token van een admin en niet met het app-token.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="space-y-4">
+			<p class="text-sm">
+				Status:
+				{#if !data.adlibToken.ingesteld}
+					<span class="font-semibold text-destructive">nog geen token ingesteld</span>
+				{:else if data.adlibToken.verlopen}
+					<span class="font-semibold text-destructive">token verlopen{data.adlibToken.verloopt_at ? ` op ${datumKort(data.adlibToken.verloopt_at)}` : ''}: plak een nieuw token</span>
+				{:else}
+					<span class="font-semibold text-brand-green">ingesteld{data.adlibToken.verloopt_at ? `, geldig tot ${datumKort(data.adlibToken.verloopt_at)}` : ''}</span>
+				{/if}
+			</p>
+			<ol class="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+				<li>Open de <a class="font-medium text-brand-green underline" href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer">Graph API Explorer</a>, kies bij Meta App je Creative Loop-app en klik op Generate Access Token (met de permissie pages_show_list).</li>
+				<li>Kopieer het token uit het veld Access Token en plak het hieronder. De server maakt er een token van ±60 dagen van en test het meteen.</li>
+				<li>Na ±60 dagen verloopt het: herhaal dan deze stappen. Deel het token nooit in een chat of mail.</li>
+			</ol>
+			<form
+				method="POST"
+				action="?/adlibToken"
+				use:enhance={() => {
+					bezigToken = true;
+					return async ({ update }) => {
+						await update({ reset: true });
+						bezigToken = false;
+					};
+				}}
+				class="flex flex-wrap items-end gap-3"
+			>
+				<div class="min-w-[260px] flex-1 space-y-1.5">
+					<Label for="adlib-token">Token uit de Graph API Explorer</Label>
+					<Input id="adlib-token" name="token" type="password" autocomplete="off" required placeholder="Plak het token hier" />
+				</div>
+				<Button type="submit" disabled={bezigToken}>
+					<KeyRound class="size-4" />
+					{bezigToken ? 'Bezig…' : 'Token opslaan en testen'}
 				</Button>
 			</form>
 		</Card.Content>

@@ -63,7 +63,7 @@ function vertaalFout(status: number, body: string): AdLibraryFout {
 		return new AdLibraryFout('Het Meta-token is verlopen of ongeldig. Koppel Meta opnieuw (Sprint → Meta-koppeling).', true);
 	if (code === 10 || code === 200 || /permission|not authorized|verif/i.test(msg))
 		return new AdLibraryFout(
-			`Meta geeft deze app of dit account nog geen toegang tot de Ad Library API. Bevestig je identiteit op facebook.com/ID en accepteer de voorwaarden op facebook.com/ads/library/api — of vul dit veld handmatig in. (Meta: ${code}${sub ? `/${sub}` : ''} — ${msg.slice(0, 220)})`,
+			`Meta geeft deze toegang nog niet vrij voor de Ad Library API (alleen een persoon met bevestigde identiteit kan die gebruiken, niet het app-token). Stel een admin-token in bij Instellingen → Meta Ad Library, of vul dit veld handmatig in. (Meta: ${code}${sub ? `/${sub}` : ''} — ${msg.slice(0, 220)})`,
 			true
 		);
 	if (status === 429 || code === 4 || code === 17 || code === 613)
@@ -130,12 +130,12 @@ async function zetFormaten(ads: AdLibAd[], zoek: string, land: string, token: st
 export async function zoekAdLibrary(opties: {
 	zoek: string;
 	land?: string;
-	tokens: Array<{ soort: 'klant' | 'app'; token: string }>;
+	tokens: Array<{ soort: 'bureau' | 'klant' | 'app'; token: string }>;
 	maxAds?: number;
-}): Promise<{ ads: AdLibAd[]; toegang: 'klant' | 'app' }> {
+}): Promise<{ ads: AdLibAd[]; toegang: 'bureau' | 'klant' | 'app' }> {
 	if (opties.tokens.length === 0)
 		throw new AdLibraryFout(
-			'Geen toegang beschikbaar: koppel Meta voor deze klant (Sprint → Meta-koppeling) of stel META_APP_ID en META_APP_SECRET in.'
+			'Geen toegang beschikbaar: stel een Ad Library-token in bij Instellingen → Meta Ad Library, of koppel Meta voor deze klant.'
 		);
 	let laatste: AdLibraryFout | null = null;
 	for (const t of opties.tokens) {
@@ -159,4 +159,14 @@ export async function zoekAdLibrary(opties: {
 /** App-token (id|secret), alleen server-side beschikbaar. */
 export function appToken(): string | null {
 	return env.META_APP_ID && env.META_APP_SECRET ? `${env.META_APP_ID}|${env.META_APP_SECRET}` : null;
+}
+
+/** Controleert met één lichte zoekopdracht of een token de Ad Library mag gebruiken. */
+export async function testAdLibraryToken(token: string): Promise<{ ok: boolean; melding: string }> {
+	try {
+		await haalMetToken('nederland', 'NL', token, 1, { velden: 'id' });
+		return { ok: true, melding: 'De Ad Library geeft antwoord met dit token.' };
+	} catch (e) {
+		return { ok: false, melding: e instanceof Error ? e.message : 'Onbekende fout' };
+	}
 }
