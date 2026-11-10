@@ -12,6 +12,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import KeyRound from '@lucide/svelte/icons/key-round';
 
 	let { data, children } = $props();
 
@@ -231,6 +232,13 @@
 					<p class="text-xs capitalize text-sidebar-foreground/60">{data.profiel?.rol ?? ''}</p>
 				</div>
 			</div>
+			<a
+				href="/account"
+				class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+			>
+				<KeyRound class="size-4 shrink-0" />
+				Wachtwoord wijzigen
+			</a>
 			<button
 				type="button"
 				onclick={() => (rondleidingOpen = true)}
