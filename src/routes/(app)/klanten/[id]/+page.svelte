@@ -4,6 +4,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Card from '$lib/components/ui/card';
 	import IntakeProgress from '$lib/components/app/IntakeProgress.svelte';
+	import LoopBord from '$lib/components/app/LoopBord.svelte';
 	import { STATUSSEN, STATUS_LABELS, FASE_LABELS } from '$lib/config';
 	import { datumKort, relatieveTijd } from '$lib/format';
 	import { postJSON } from '$lib/saver.svelte';
@@ -23,69 +24,32 @@
 	function saveGeheugen() {
 		return postJSON('/api/client', { type: 'geheugen', clientId: client.id, tekst: geheugen });
 	}
-
-	let tegels = $derived([
-		{ label: 'Intake', waarde: `${data.reis.intakePct}%`, sub: 'ingevuld', href: `${base}/intake` },
-		{
-			label: 'Trigger map',
-			waarde: data.reis.heeftTriggerMap ? `${data.reis.invalshoeken}` : '—',
-			sub: data.reis.heeftTriggerMap ? 'invalshoeken' : 'nog niet gegenereerd',
-			href: `${base}/triggermap`
-		},
-		{
-			label: 'Matrix',
-			waarde: `${data.reis.concepten}`,
-			sub: `concepten · ${data.reis.live} live`,
-			href: `${base}/matrix`
-		},
-		{
-			label: 'Sprint',
-			waarde: `${data.reis.getest}`,
-			sub: `getest · ${data.reis.winnaars} winnaar${data.reis.winnaars === 1 ? '' : 's'}`,
-			href: `${base}/sprint`
-		},
-		{ label: 'Learnings', waarde: `${data.reis.winnaars}`, sub: 'winnaars', href: `${base}/learnings` }
-	]);
 </script>
 
 <!-- Volgende stap -->
 <a
 	href={`${base}/${data.volgendeStap.tab}`}
-	class="mb-6 flex items-center justify-between gap-4 rounded-xl border border-brand-lime/40 bg-brand-mint/40 px-5 py-4 transition-colors hover:bg-brand-mint/60"
+	class="mb-6 flex items-center justify-between gap-4 rounded-[22px] border border-brand-lime/50 bg-brand-mint/50 px-6 py-5 transition-colors hover:bg-brand-mint"
 	data-tour-order="2"
 	data-tour-title="Volgende stap"
 	data-tour-text="Weet je even niet wat te doen? Deze kaart denkt met je mee en wijst steeds de logische vervolgstap aan — van intake tot volgende testronde."
 >
 	<div>
-		<p class="text-xs font-medium uppercase tracking-wide text-brand-green">Volgende stap</p>
-		<p class="mt-0.5 font-semibold text-foreground">{data.volgendeStap.label}</p>
+		<p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-green">Volgende stap</p>
+		<p class="mt-1 font-display text-xl font-bold text-brand-green">{data.volgendeStap.label}</p>
 		<p class="mt-0.5 text-sm text-muted-foreground">{data.volgendeStap.hint}</p>
 	</div>
 	<span
-		class="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand-green px-3 py-2 text-sm font-medium text-white"
+		class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-green px-5 py-2.5 text-sm font-semibold text-white"
 	>
 		Ga verder
 		<ArrowRight class="size-4" />
 	</span>
 </a>
 
-<!-- Reis-dashboard -->
-<div
-	class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
-	data-tour-order="3"
-	data-tour-title="Reis-dashboard"
-	data-tour-text="In één oogopslag waar deze klant staat: intake-%, aantal invalshoeken, concepten, geteste sprints en winnaars. Elke tegel is klikbaar."
->
-	{#each tegels as t (t.label)}
-		<a
-			href={t.href}
-			class="rounded-lg border bg-card p-3 transition-colors hover:border-brand-lime/50 hover:bg-brand-mint/20"
-		>
-			<p class="text-xs text-muted-foreground">{t.label}</p>
-			<p class="mt-1 text-2xl font-semibold text-foreground">{t.waarde}</p>
-			<p class="text-xs text-muted-foreground">{t.sub}</p>
-		</a>
-	{/each}
+<!-- De loop in vijf stappen -->
+<div class="mb-8">
+	<LoopBord stappen={data.loop} {base} />
 </div>
 
 <!-- Loop-geheugen: het cumulatieve brein per klant -->
@@ -111,6 +75,12 @@
 	</Card.Content>
 </Card.Root>
 
+<details class="group rounded-[22px] border bg-card">
+	<summary class="cursor-pointer list-none px-6 py-4 font-display text-lg font-bold text-brand-green [&::-webkit-details-marker]:hidden">
+		Details en klantbeheer
+		<span class="ml-2 text-sm font-normal text-muted-foreground">intake per bron, status, verwijderen</span>
+	</summary>
+	<div class="px-4 pb-4">
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 	<!-- Intake-voortgang -->
 	<Card.Root class="lg:col-span-2">
@@ -193,3 +163,5 @@
 		</Card.Root>
 	</div>
 </div>
+	</div>
+</details>

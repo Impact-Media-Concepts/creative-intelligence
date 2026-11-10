@@ -71,6 +71,12 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-10 — Loop-bord als klantoverzicht (start herontwerp "visueel & simpel")
+- **Wat:** het klantoverzicht toont nu de loop in vijf stappen — Begrijpen (intake + trigger map), Bepalen (testset), Maken (briefs), Testen (resultaten), Leren (winnaars) — als bord. Wat klaar is staat groen met vinkje, de stap die aan de beurt is licht op met een knop, wat volgt is gedempt; een gestreepte pijl onder de stappen toont dat elke ronde met wat je leerde begint. De kaart "Volgende stap" boven het bord komt uit dezelfde logica (`bouwLoop`) en kan dus nooit afwijken. De oude tegels/intake-kaart/status/verwijderen zijn naar een uitklapbare sectie "Details en klantbeheer" verplaatst.
+- **Bestanden:** `src/lib/loop.ts` (zuivere logica: statussen per stap), `src/lib/components/app/LoopBord.svelte`, `src/routes/(app)/klanten/[id]/+page.{svelte,server.ts}` (telt nu ook concepten met een brief).
+- **Vervolg (afgesproken):** Testbord (testrondes als boom: doel → [persona, alleen bij >1] → test/variabele → varianten; meerdere doelen/campagnes naast elkaar; vereist een `doel`-kolom op concepts), concept-kaarten met advertentie-mockup, visuele briefing/storyboard, live resultaten, 1-klik volgende ronde, rollen (klant/designer/strateeg).
+- **Verificatie:** typecheck 0 fouten; op de testklant: Begrijpen en Bepalen klaar, Maken aan de beurt ("1 van 14 briefs"), hero-kaart en bord consistent. Visuele screenshot niet gelukt (venster op de achtergrond); opmaak gecontroleerd via afmetingen.
+
 ### 2026-11-09 — Automatische scorevoorstel voor nieuwe invalshoeken
 - **Wat:** invalshoeken die je via het angle-raster toevoegt krijgen meteen een RICE-light **voorstel** (zelfde scorekaart als "Scores opnieuw voorstellen"), alleen voor de nieuwe; bestaande scores blijven onaangeroerd. Mislukt de AI-stap, dan staan ze er gewoon in zonder score (geen blokkade) en wijst de melding naar de matrix. Het scoren gebeurt na het opslaan; de scores worden daarna op naam bij de nieuwe invalshoeken gezet na opnieuw lezen (geen overschrijven van tussentijdse wijzigingen).
 - **Bestanden:** `src/routes/api/trigger-map/+server.ts` (case `invalshoeken_toevoegen`, antwoord bevat nu `gescoord`), `src/lib/components/app/AngleRaster.svelte` (stuurt `clientId` mee, melding "Score is voorgesteld — controleer die in de matrix").

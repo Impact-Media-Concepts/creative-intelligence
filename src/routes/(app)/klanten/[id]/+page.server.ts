@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { berekenIntakeProgress, heeftInhoud, bron2Ingevuld } from '$lib/progress';
 import { STATUSSEN, type Status } from '$lib/config';
+import { bouwLoop } from '$lib/loop';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
 	const id = params.id;
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 			.maybeSingle(),
 		supabase
 			.from('concepts')
-			.select('status, gearchiveerd, is_winnaar, hook_rate, hold_rate, ctr, roas, cpa, observatie, ai_analyse')
+			.select('status, gearchiveerd, is_winnaar, hook_rate, hold_rate, ctr, roas, cpa, observatie, ai_analyse, brief')
 			.eq('client_id', id)
 	]);
 
@@ -67,6 +68,11 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 			!!c.ai_analyse
 	).length;
 
+	// Een brief telt als gemaakt zodra er minstens één ingevuld tekstveld in staat.
+	const heeftBrief = (b: unknown) =>
+		!!b && typeof b === 'object' && Object.values(b as Record<string, unknown>).some((v) => typeof v === 'string' && v.trim().length > 0);
+	const metBrief = actieveConcepten.filter((c) => heeftBrief(c.brief)).length;
+
 	const reis = {
 		intakePct: progress.totaal,
 		heeftTriggerMap,
@@ -74,45 +80,64 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		concepten: actieveConcepten.length,
 		live,
 		winnaars,
-		getest
+		getest,
+		metBrief
 	};
+	const loop = bouwLoop(reis);
 
-	// Eén duidelijke volgende actie, afgeleid van waar de klant staat.
-	let volgendeStap: { label: string; hint: string; tab: string };
-	if (!heeftTriggerMap) {
-		volgendeStap =
-			progress.totaal < 25
-				? {
-						label: 'Begin met de intake',
-						hint: 'Vul de bronnen zo volledig mogelijk in — hoe beter de intake, hoe sterker alles daarna.',
-						tab: 'intake'
-					}
-				: {
-						label: 'Genereer de trigger map',
-						hint: 'Zet de intake om in inzichten, persona’s en een automatisch geprioriteerde test-backlog.',
-						tab: 'triggermap'
-					};
-	} else if (actieveConcepten.length === 0) {
-		volgendeStap = {
+	// Eén duidelijke volgende actie: altijd de stap van de loop die nu aan de beurt is, zodat het
+	// bord en de "Volgende stap"-kaart nooit uit elkaar lopen.
+	const nu = loop.find((s) => s.status === 'nu');
+	const alles: Record<string, { label: string; hint: string; tab: string }> = {
+		intake: {
+			label: 'Begin met de intake',
+			hint: 'Vul de bronnen zo volledig mogelijk in — hoe beter de intake, hoe sterker alles daarna.',
+			tab: 'intake'
+		},
+		triggermap: {
+			label: 'Genereer de trigger map',
+			hint: 'Zet de intake om in inzichten, persona’s en een automatisch geprioriteerde test-backlog.',
+			tab: 'triggermap'
+		},
+		bepalen: {
 			label: 'Stel je testset samen in de Testruimte',
 			hint: 'Kies de combinaties (aanbod × invalshoek × format × creator) die je deze ronde wil testen — de tool houdt je gefocust.',
 			tab: 'testruimte'
-		};
-	} else if (getest === 0) {
-		volgendeStap = {
-			label: 'Voer de sprintresultaten in',
-			hint: 'Vul de metrics in en laat Claude de learning bepalen.',
-			tab: 'sprint'
-		};
-	} else {
-		volgendeStap = {
-			label: 'Bekijk learnings & start de volgende ronde',
+		},
+		maken: {
+			label: 'Werk de briefing uit per concept',
+			hint: 'Briefing, script en advertentietekst per concept — dan kan de designer aan de slag.',
+			tab: 'productie'
+		},
+		testen:
+			getest === 0
+				? {
+						label: 'Zet live en voer de resultaten in',
+						hint: 'Vul de metrics in (of koppel Meta) en laat Claude de learning bepalen.',
+						tab: 'sprint'
+					}
+				: {
+						label: 'Bekijk de stand van de test',
+						hint: 'Wie loopt voor, wie achter, en is er al een winnaar?',
+						tab: 'sprint'
+					},
+		leren: {
+			label: 'Bekijk learnings & kies de winnaars',
 			hint: 'Markeer winnaars en bouw voort op wat werkt.',
 			tab: 'learnings'
-		};
-	}
+		},
+		volgende_ronde: {
+			label: 'Start de volgende ronde',
+			hint: 'Bouw voort op de winnaars: varieer format, structuur of creator, en test nieuwe invalshoeken ernaast.',
+			tab: 'testruimte'
+		}
+	};
+	let volgendeStap: { label: string; hint: string; tab: string };
+	if (!nu) volgendeStap = alles.volgende_ronde;
+	else if (nu.sleutel === 'begrijpen') volgendeStap = progress.totaal < 25 ? alles.intake : alles.triggermap;
+	else volgendeStap = alles[nu.sleutel];
 
-	return { progress, reis, volgendeStap };
+	return { progress, reis, volgendeStap, loop };
 };
 
 export const actions: Actions = {
