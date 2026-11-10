@@ -6,6 +6,8 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Card from '$lib/components/ui/card';
 	import { datumKort } from '$lib/format';
+	import { page } from '$app/state';
+	import LogIn from '@lucide/svelte/icons/log-in';
 	import { cn } from '$lib/utils';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -23,6 +25,13 @@
 	<div class="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
 		{form.foutmelding}
 	</div>
+{/if}
+{#if page.url.searchParams.get('adlib') === 'ok'}
+	<div class="mb-4 rounded-md bg-brand-lime/15 px-3 py-2 text-sm text-brand-green">Gekoppeld met Facebook en getest: de Ad Library geeft antwoord. De concurrent-scan in de intake werkt nu.</div>
+{:else if page.url.searchParams.get('adlib') === 'niet-vrijgegeven'}
+	<div class="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">Gekoppeld, maar Meta geeft de Ad Library nog niet vrij voor dit account. Controleer of je identiteit is bevestigd (facebook.com/ID) en probeer het later opnieuw.</div>
+{:else if page.url.searchParams.get('adlib') === 'fout'}
+	<div class="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">Koppelen mislukt: {page.url.searchParams.get('reden') ?? 'onbekende fout'}</div>
 {/if}
 {#if form?.adlibOk}
 	<div class="mb-4 rounded-md px-3 py-2 text-sm {form.adlibGetest ? 'bg-brand-lime/15 text-brand-green' : 'bg-destructive/10 text-destructive'}">
@@ -176,7 +185,18 @@
 					<span class="font-semibold text-brand-green">ingesteld{data.adlibToken.verloopt_at ? `, geldig tot ${datumKort(data.adlibToken.verloopt_at)}` : ''}</span>
 				{/if}
 			</p>
-			<ol class="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+			<div class="flex flex-wrap items-center gap-3">
+				<a
+					href="/api/meta/connect?bureau=1"
+					class="inline-flex items-center gap-2 rounded-full bg-brand-green px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#00432E]"
+				>
+					<LogIn class="size-4" /> {data.adlibToken.ingesteld && !data.adlibToken.verlopen ? 'Opnieuw koppelen met Facebook' : 'Koppel met Facebook'}
+				</a>
+				<span class="text-[13px] text-muted-foreground">Je logt in als jezelf; er hoeft niets gekopieerd te worden.</span>
+			</div>
+			<details class="rounded-md border px-3 py-2 text-sm">
+				<summary class="cursor-pointer font-medium text-muted-foreground">Of plak handmatig een token</summary>
+			<ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
 				<li>Open de <a class="font-medium text-brand-green underline" href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer">Graph API Explorer</a>, kies bij Meta App je Creative Loop-app en klik op Generate Access Token (met de permissie pages_show_list).</li>
 				<li>Kopieer het token uit het veld Access Token en plak het hieronder. De server maakt er een token van ±60 dagen van en test het meteen.</li>
 				<li>Na ±60 dagen verloopt het: herhaal dan deze stappen. Deel het token nooit in een chat of mail.</li>
@@ -191,7 +211,7 @@
 						bezigToken = false;
 					};
 				}}
-				class="flex flex-wrap items-end gap-3"
+				class="mt-3 flex flex-wrap items-end gap-3"
 			>
 				<div class="min-w-[260px] flex-1 space-y-1.5">
 					<Label for="adlib-token">Token uit de Graph API Explorer</Label>
@@ -202,6 +222,7 @@
 					{bezigToken ? 'Bezig…' : 'Token opslaan en testen'}
 				</Button>
 			</form>
+			</details>
 		</Card.Content>
 	</Card.Root>
 </div>

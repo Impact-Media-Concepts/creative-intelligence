@@ -2,6 +2,8 @@ import { error, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { supabaseAdmin } from '$lib/server/supabase-admin';
 import { exchangeCode, exchangeLongLived, fetchAdAccounts } from '$lib/server/meta/client';
+import { bewaarLangToken } from '$lib/server/meta/bureau-token';
+import { testAdLibraryToken } from '$lib/server/meta/ad-library';
 import type { RequestHandler } from './$types';
 
 /**
@@ -22,6 +24,27 @@ export const GET: RequestHandler = async ({ url, locals, cookies }) => {
 	const cookieNonce = cookies.get('meta_oauth_nonce');
 	cookies.delete('meta_oauth_nonce', { path: '/' });
 	if (!clientId || !nonce || nonce !== cookieNonce) throw error(400, 'Ongeldige state (CSRF)');
+
+	// Bureau-koppeling (Ad Library-token): token bewaren, meteen testen en terug naar Instellingen.
+	if (clientId === 'bureau') {
+		const { data: isAdmin } = await locals.supabase.rpc('is_admin');
+		if (!isAdmin) throw error(403, 'Alleen een admin kan dit koppelen');
+		const bId = env.META_APP_ID;
+		const bSecret = env.META_APP_SECRET;
+		if (!bId || !bSecret) throw error(500, 'META_APP_ID/META_APP_SECRET niet geconfigureerd');
+		const bUri = env.META_REDIRECT_URI || `${url.origin}/api/meta/callback`;
+		try {
+			const kort = await exchangeCode(bId, bSecret, bUri, code);
+			const lang = await exchangeLongLived(bId, bSecret, kort.access_token);
+			await bewaarLangToken(lang.access_token, lang.expires_in, locals.user.id);
+			const test = await testAdLibraryToken(lang.access_token);
+			throw redirect(303, `/instellingen?adlib=${test.ok ? 'ok' : 'niet-vrijgegeven'}`);
+		} catch (e) {
+			if (e && typeof e === 'object' && 'status' in e && 'location' in e) throw e; // SvelteKit redirect
+			const reden = e instanceof Error ? e.message.slice(0, 120) : 'onbekend';
+			throw redirect(303, `/instellingen?adlib=fout&reden=${encodeURIComponent(reden)}`);
+		}
+	}
 
 	// Toegang tot deze klant afdwingen via RLS.
 	const { data: client } = await locals.supabase

@@ -6,21 +6,31 @@ import type { RequestHandler } from './$types';
 /**
  * Start de Meta OAuth-flow voor één klant.
  *   GET /api/meta/connect?client=<clientId>
+ * Of voor het bureau (Ad Library-token, alleen admins):
+ *   GET /api/meta/connect?bureau=1
  * Zet een CSRF-nonce als cookie en stuurt door naar de Facebook-login.
  */
 export const GET: RequestHandler = async ({ url, locals, cookies }) => {
 	if (!locals.user) throw redirect(303, '/login');
 
-	const clientId = url.searchParams.get('client');
-	if (!clientId) throw error(400, 'Ontbrekende client-parameter');
+	const bureau = url.searchParams.get('bureau') === '1';
+	let clientId = url.searchParams.get('client');
+	if (bureau) {
+		// Het Ad Library-token van het bureau: alleen een admin mag dat koppelen.
+		const { data: isAdmin } = await locals.supabase.rpc('is_admin');
+		if (!isAdmin) throw error(403, 'Alleen een admin kan dit koppelen');
+		clientId = 'bureau';
+	} else {
+		if (!clientId) throw error(400, 'Ontbrekende client-parameter');
 
-	// Toegang tot deze klant afdwingen via RLS (select geeft niets terug zonder toegang).
-	const { data: client } = await locals.supabase
-		.from('clients')
-		.select('id')
-		.eq('id', clientId)
-		.maybeSingle();
-	if (!client) throw error(403, 'Geen toegang tot deze klant');
+		// Toegang tot deze klant afdwingen via RLS (select geeft niets terug zonder toegang).
+		const { data: client } = await locals.supabase
+			.from('clients')
+			.select('id')
+			.eq('id', clientId)
+			.maybeSingle();
+		if (!client) throw error(403, 'Geen toegang tot deze klant');
+	}
 
 	const appId = env.META_APP_ID;
 	if (!appId) throw error(500, 'META_APP_ID is niet geconfigureerd');
@@ -42,7 +52,8 @@ export const GET: RequestHandler = async ({ url, locals, cookies }) => {
 	dialog.searchParams.set('client_id', appId);
 	dialog.searchParams.set('redirect_uri', redirectUri);
 	dialog.searchParams.set('state', state);
-	dialog.searchParams.set('scope', 'ads_read,business_management');
+	// Klant-koppeling: advertentiecijfers lezen. Bureau-token (Ad Library): alleen een geldig gebruikerstoken, dus de kleinste permissie.
+	dialog.searchParams.set('scope', bureau ? 'pages_show_list' : 'ads_read,business_management');
 	dialog.searchParams.set('response_type', 'code');
 
 	throw redirect(303, dialog.toString());

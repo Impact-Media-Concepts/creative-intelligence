@@ -71,6 +71,13 @@ Alle generaties gebruiken **structured outputs** (JSON-schema → gegarandeerd v
 
 ## Wijzigingen (nieuwste boven)
 
+### 2026-11-10 — Ad Library-token via "Koppel met Facebook" (geen plakken meer)
+- **Wat:** in Instellingen → Meta Ad Library staat nu de knop **Koppel met Facebook** (alleen admins). Die gebruikt dezelfde Meta-login als de klantkoppeling (`/api/meta/connect?bureau=1` → `/api/meta/callback`, state `bureau.<nonce>`): de admin logt in als zichzelf, de server wisselt de code in voor een langlopend token (±60 dagen), bewaart het in `bureau_instellingen`, test het meteen met een Ad Library-zoekopdracht en stuurt terug naar Instellingen met een melding (`?adlib=ok | niet-vrijgegeven | fout`). Scope: alleen `pages_show_list` (kleinste permissie; de Ad Library heeft een geldig gebruikerstoken nodig, geen speciale rechten). Het plakken van een Explorer-token blijft beschikbaar onder "Of plak handmatig een token". Er hoeft dus nergens een token gekopieerd of in een chat gezet te worden.
+- **Bestanden:** `src/routes/api/meta/connect/+server.ts`, `src/routes/api/meta/callback/+server.ts`, `src/lib/server/meta/bureau-token.ts` (`bewaarLangToken`), `src/routes/(app)/instellingen/+page.svelte`.
+- **Redirect-URI:** de live callback `https://creative-intelligence-three.vercel.app/api/meta/callback` staat al bij Meta; lokaal (`http://localhost:5173/api/meta/callback`) niet, dus testen kan alleen op de live app (na push).
+- **Verificatie:** typecheck 0 fouten; de pagina rendert met de knop en de status. De volledige login-flow is nog niet doorlopen (vereist de live app).
+- **Controle migraties (10 nov):** in Supabase staan `concepts.doel` (0016) en tabel `bureau_instellingen` (0018); de kolom `concepts.ronde` (0017) ontbrak nog, dus 0017 moet nog gedraaid worden (het Testbord werkt ook zonder).
+
 ### 2026-11-10 — Meta Ad Library met een admin-token (Instellingen)
 - **Aanleiding:** de Ad Library API werkt alleen voor een PERSOON met bevestigde identiteit; het app-token (`META_APP_ID|META_APP_SECRET`) wordt geweigerd (code 10/2332004). In de Graph API Explorer met Jari's user-token gaf dezelfde zoekopdracht wel resultaten.
 - **Wat:** Instellingen → kaart "Meta Ad Library" (alleen admins). Een admin plakt een token uit de Graph API Explorer (permissie `pages_show_list` volstaat); de server wisselt het via `fb_exchange_token` in voor een langlopend token (±60 dagen), bewaart het, en test het meteen met één Ad Library-zoekopdracht. De kaart toont de status (niet ingesteld / geldig tot / verlopen). Het token wordt nooit teruggestuurd naar de browser. De concurrent-scan in de intake gebruikt dit bureau-token als eerste keuze (daarna het klant-token, daarna het app-token).

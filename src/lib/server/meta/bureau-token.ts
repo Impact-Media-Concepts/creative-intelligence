@@ -39,6 +39,24 @@ export async function leesBureauToken(): Promise<string | null> {
 	return data.waarde as string;
 }
 
+/** Bewaart een token dat al langlopend is (bv. uit de Facebook-login). */
+export async function bewaarLangToken(token: string, expiresIn: number | undefined, userId: string): Promise<{ verloopt_at: string }> {
+	const seconden = typeof expiresIn === 'number' && expiresIn > 0 ? expiresIn : 60 * 86400;
+	const verloopt_at = new Date(Date.now() + seconden * 1000).toISOString();
+	const { error } = await db.from('bureau_instellingen').upsert({
+		sleutel: SLEUTEL,
+		waarde: token,
+		verloopt_at,
+		bijgewerkt_door: userId,
+		bijgewerkt_at: new Date().toISOString()
+	});
+	if (error) {
+		if (/bureau_instellingen/i.test(error.message)) throw new Error('Draai eerst migratie 0018 in Supabase.');
+		throw new Error('Opslaan mislukt: ' + error.message);
+	}
+	return { verloopt_at };
+}
+
 /** Wisselt een (kortlopend) token in voor een langlopend token en bewaart het. Geeft de verloopdatum terug. */
 export async function bewaarBureauToken(kortToken: string, userId: string): Promise<{ langToken: string; verloopt_at: string }> {
 	const appId = env.META_APP_ID;
@@ -54,18 +72,6 @@ export async function bewaarBureauToken(kortToken: string, userId: string): Prom
 	const j = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: { message?: string } };
 	if (!res.ok || !j.access_token) throw new Error('Meta weigerde het token: ' + (j.error?.message ?? `status ${res.status}`));
 
-	const seconden = typeof j.expires_in === 'number' && j.expires_in > 0 ? j.expires_in : 60 * 86400;
-	const verloopt_at = new Date(Date.now() + seconden * 1000).toISOString();
-	const { error } = await db.from('bureau_instellingen').upsert({
-		sleutel: SLEUTEL,
-		waarde: j.access_token,
-		verloopt_at,
-		bijgewerkt_door: userId,
-		bijgewerkt_at: new Date().toISOString()
-	});
-	if (error) {
-		if (/bureau_instellingen/i.test(error.message)) throw new Error('Draai eerst migratie 0018 in Supabase.');
-		throw new Error('Opslaan mislukt: ' + error.message);
-	}
+	const { verloopt_at } = await bewaarLangToken(j.access_token, j.expires_in, userId);
 	return { langToken: j.access_token, verloopt_at };
 }
